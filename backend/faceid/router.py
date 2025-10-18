@@ -2,12 +2,10 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from .service import FaceVerificationService
 from .schemas import VerificationResult
-import os
-from pathlib import Path
+
 
 router = APIRouter()
 
-# Initialize face verification service
 face_service = FaceVerificationService(
     model_name="VGG-Face",
     detector_backend="opencv",
