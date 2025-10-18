@@ -23,7 +23,7 @@ class UserRead(BaseModel):
     id: int
     name: str
     surname: str
-    email: EmailStr
+    email: str  
     phone: str
     avatar: Optional[str] = Field(None, description="Avatar filename (for Face ID)")
     created_at: datetime
