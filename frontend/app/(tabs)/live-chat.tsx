@@ -1,26 +1,30 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { LiveAPIProvider, useLiveAPIContext } from '../../contexts/LiveAPIContext';
-import { Camera } from 'expo-camera';
 import Constants from 'expo-constants';
+import { AudioRecorder } from '../../lib/audio-recorder';
+import { useWebcam } from '../../hooks/use-webcam';
+import { useScreenCapture } from '../../hooks/use-screen-capture';
 
 const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 function LiveChatContent() {
-  const { connected, connect, disconnect, client, volume } = useLiveAPIContext();
+  const { connected, connect, disconnect, client, volume, setConfig } = useLiveAPIContext();
   const [messages, setMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'ai'}>>([]);
   const [isMicOn, setIsMicOn] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const audioRecorderRef = useRef<AudioRecorder | null>(null);
+  const webcam = useWebcam();
+  const screenCapture = useScreenCapture();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const videoIntervalRef = useRef<number | null>(null);
 
+  // Setup config for Gemini
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+    setConfig({});
+  }, [setConfig]);
 
+  // Listen for AI responses
   useEffect(() => {
     const onContent = (content: any) => {
       console.log('AI Response:', content);
@@ -37,115 +41,213 @@ function LiveChatContent() {
       }
     };
 
+    const onSetupComplete = () => {
+      console.log('Setup complete!');
+    };
+
     client.on('content', onContent);
+    client.on('setupcomplete', onSetupComplete);
+    
     return () => {
       client.off('content', onContent);
+      client.off('setupcomplete', onSetupComplete);
     };
   }, [client]);
 
+  // Handle connection
   const handleConnect = async () => {
     try {
       if (connected) {
         await disconnect();
+        stopAllStreams();
         setMessages([]);
-        setIsMicOn(false);
-        setIsCameraOn(false);
-        setIsScreenSharing(false);
-        Alert.alert('Отключено', 'Соединение закрыто');
+        alert('Disconnected from Gemini');
       } else {
         await connect();
         setMessages([{
           id: '1',
-          text: 'Привет! Я Gemini AI с мультимодальными возможностями. Включите микрофон или камеру чтобы начать! 🎤📹',
+          text: 'Hello! I\'m Gemini AI with multimodal capabilities. Turn on your microphone, camera, or share your screen to start! 🎤📹🖥️',
           sender: 'ai'
         }]);
-        Alert.alert('Успех', 'Подключено к Gemini Live API! 🚀');
+        alert('Connected to Gemini Live API! 🚀');
       }
     } catch (error) {
-      console.error(error);
-      Alert.alert('Ошибка', 'Проверьте API ключ в .env файле');
+      console.error('Connection error:', error);
+      alert('Error: Check your API key');
     }
   };
 
-  const sendTestMessage = (text: string) => {
-    if (!connected) return;
-    
-    // Добавляем сообщение пользователя
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      text: text,
-      sender: 'user'
-    }]);
-
-    // Отправляем в Gemini
-    try {
-      client.send([{ text: text }]);
-    } catch (error) {
-      console.error('Send error:', error);
-      Alert.alert('Ошибка', 'Не удалось отправить сообщение');
+  // Stop all active streams
+  const stopAllStreams = () => {
+    if (isMicOn) {
+      audioRecorderRef.current?.stop();
+      audioRecorderRef.current = null;
+      setIsMicOn(false);
+    }
+    if (webcam.isStreaming) {
+      stopVideoStream();
+      webcam.stop();
+    }
+    if (screenCapture.isStreaming) {
+      stopVideoStream();
+      screenCapture.stop();
     }
   };
 
-  const toggleMic = () => {
+  // Toggle microphone
+  const toggleMic = async () => {
     if (!connected) {
-      Alert.alert('Ошибка', 'Сначала подключитесь к Gemini');
+      alert('Please connect to Gemini first');
       return;
     }
-    const newState = !isMicOn;
-    setIsMicOn(newState);
-    
-    if (newState) {
-      // Включили микрофон - отправляем тестовое сообщение
-      Alert.alert('Микрофон включен', '🎤 Говорите, AI слушает');
-      setTimeout(() => {
-        sendTestMessage('Привет! Я включил микрофон. Как дела?');
-      }, 500);
+
+    if (isMicOn) {
+      // Stop recording
+      audioRecorderRef.current?.stop();
+      audioRecorderRef.current = null;
+      setIsMicOn(false);
+      alert('🔇 Microphone turned off');
     } else {
-      Alert.alert('Микрофон выключен', '🔇 Голосовой ввод остановлен');
+      // Start recording
+      try {
+        const recorder = new AudioRecorder(16000);
+        audioRecorderRef.current = recorder;
+
+        recorder.on('data', (base64Data: string) => {
+          if (connected) {
+            client.sendRealtimeInput([{
+              mimeType: 'audio/pcm',
+              data: base64Data
+            }]);
+          }
+        });
+
+        await recorder.start();
+        setIsMicOn(true);
+        alert('🎤 Microphone is ON - Speak now!');
+      } catch (error) {
+        console.error('Microphone error:', error);
+        alert('Error: Could not access microphone');
+      }
     }
   };
 
-  const toggleCamera = () => {
-    if (!connected) {
-      Alert.alert('Ошибка', 'Сначала подключитесь к Gemini');
-      return;
+  // Start sending video frames
+  const startVideoStream = (stream: MediaStream) => {
+    if (Platform.OS !== 'web') return;
+
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.play();
+    videoRef.current = video;
+
+    const canvas = document.createElement('canvas');
+    canvasRef.current = canvas;
+    const ctx = canvas.getContext('2d');
+
+    // Send frames every 1 second
+    videoIntervalRef.current = window.setInterval(() => {
+      if (!video.videoWidth || !video.videoHeight) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx?.drawImage(video, 0, 0);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64data = (reader.result as string).split(',')[1];
+            if (connected && base64data) {
+              client.sendRealtimeInput([{
+                mimeType: 'image/jpeg',
+                data: base64data
+              }]);
+            }
+          };
+          reader.readAsDataURL(blob);
+        }
+      }, 'image/jpeg', 0.7);
+    }, 1000);
+  };
+
+  // Stop video stream
+  const stopVideoStream = () => {
+    if (videoIntervalRef.current) {
+      clearInterval(videoIntervalRef.current);
+      videoIntervalRef.current = null;
     }
-    if (!hasPermission) {
-      Alert.alert('Ошибка', 'Нет доступа к камере');
-      return;
-    }
-    const newState = !isCameraOn;
-    setIsCameraOn(newState);
-    
-    if (newState) {
-      Alert.alert('Камера включена', '📹 AI видит что вы показываете');
-      setTimeout(() => {
-        sendTestMessage('Я включил камеру. Что ты видишь на экране?');
-      }, 500);
-    } else {
-      Alert.alert('Камера выключена', '📷 Видео остановлено');
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current = null;
     }
   };
 
-  const toggleScreenShare = () => {
+  // Toggle webcam
+  const toggleCamera = async () => {
     if (!connected) {
-      Alert.alert('Ошибка', 'Сначала подключитесь к Gemini');
+      alert('Please connect to Gemini first');
       return;
     }
+
     if (Platform.OS !== 'web') {
-      Alert.alert('Недоступно', 'Демонстрация экрана доступна только на веб-платформе');
+      alert('Webcam is only available on web platform');
       return;
     }
-    const newState = !isScreenSharing;
-    setIsScreenSharing(newState);
-    
-    if (newState) {
-      Alert.alert('Демонстрация экрана', '🖥️ AI видит ваш экран');
-      setTimeout(() => {
-        sendTestMessage('Я включил демонстрацию экрана. Опиши что ты видишь.');
-      }, 500);
+
+    if (webcam.isStreaming) {
+      stopVideoStream();
+      webcam.stop();
+      alert('📷 Camera turned off');
     } else {
-      Alert.alert('Демонстрация остановлена', '🖥️ Захват экрана остановлен');
+      try {
+        // Stop screen share if active
+        if (screenCapture.isStreaming) {
+          stopVideoStream();
+          screenCapture.stop();
+        }
+
+        const stream = await webcam.start();
+        startVideoStream(stream);
+        alert('📹 Camera is ON - AI can see you!');
+      } catch (error) {
+        console.error('Camera error:', error);
+        alert('Error: Could not access camera');
+      }
+    }
+  };
+
+  // Toggle screen share
+  const toggleScreenShare = async () => {
+    if (!connected) {
+      alert('Please connect to Gemini first');
+      return;
+    }
+
+    if (Platform.OS !== 'web') {
+      alert('Screen sharing is only available on web platform');
+      return;
+    }
+
+    if (screenCapture.isStreaming) {
+      stopVideoStream();
+      screenCapture.stop();
+      alert('🖥️ Screen sharing stopped');
+    } else {
+      try {
+        // Stop webcam if active
+        if (webcam.isStreaming) {
+          stopVideoStream();
+          webcam.stop();
+        }
+
+        const stream = await screenCapture.start();
+        startVideoStream(stream);
+        alert('🖥️ Screen sharing is ON - AI can see your screen!');
+      } catch (error) {
+        console.error('Screen share error:', error);
+        alert('Error: Could not capture screen');
+      }
     }
   };
 
@@ -171,16 +273,16 @@ function LiveChatContent() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🤖</Text>
             <Text style={styles.emptyStateText}>
-              Нажмите "Connect" чтобы начать
+              Press "Connect" to start
             </Text>
             <Text style={styles.emptyStateSubtext}>
-              После подключения используйте кнопки снизу:
+              After connecting, use the buttons below:
             </Text>
             <Text style={styles.emptyStateSubtext}>
-              🎤 Голосовой ввод • 📹 Камера • 🖥️ Экран
+              🎤 Voice • 📹 Camera • 🖥️ Screen Share
             </Text>
             {!API_KEY && (
-              <Text style={styles.errorText}>⚠️ API ключ не найден!</Text>
+              <Text style={styles.errorText}>⚠️ API key not found!</Text>
             )}
           </View>
         ) : (
@@ -195,17 +297,17 @@ function LiveChatContent() {
         )}
       </ScrollView>
 
-      {/* Индикатор активности */}
-      {connected && (isMicOn || isCameraOn || isScreenSharing) && (
+      {/* Active indicator */}
+      {connected && (isMicOn || webcam.isStreaming || screenCapture.isStreaming) && (
         <View style={styles.activeIndicator}>
-          {isMicOn && <Text style={styles.activeText}>🎤 Микрофон</Text>}
-          {isCameraOn && <Text style={styles.activeText}>📹 Камера</Text>}
-          {isScreenSharing && <Text style={styles.activeText}>🖥️ Экран</Text>}
+          {isMicOn && <Text style={styles.activeText}>🎤 Microphone</Text>}
+          {webcam.isStreaming && <Text style={styles.activeText}>📹 Camera</Text>}
+          {screenCapture.isStreaming && <Text style={styles.activeText}>🖥️ Screen</Text>}
           {isMicOn && <Text style={styles.volumeText}>Volume: {Math.round(volume * 100)}%</Text>}
         </View>
       )}
 
-      {/* Контролы */}
+      {/* Controls */}
       <View style={styles.controlsContainer}>
         <TouchableOpacity 
           style={[styles.controlButton, isMicOn && styles.controlButtonActive]}
@@ -213,28 +315,26 @@ function LiveChatContent() {
           onPress={toggleMic}
         >
           <Text style={styles.controlButtonIcon}>{isMicOn ? '🎤' : '🔇'}</Text>
-          <Text style={styles.controlButtonText}>Микрофон</Text>
+          <Text style={styles.controlButtonText}>Microphone</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.controlButton, isCameraOn && styles.controlButtonActive]}
-          disabled={!connected}
+          style={[styles.controlButton, webcam.isStreaming && styles.controlButtonActive]}
+          disabled={!connected || Platform.OS !== 'web'}
           onPress={toggleCamera}
         >
-          <Text style={styles.controlButtonIcon}>{isCameraOn ? '📹' : '📷'}</Text>
-          <Text style={styles.controlButtonText}>Камера</Text>
+          <Text style={styles.controlButtonIcon}>{webcam.isStreaming ? '📹' : '📷'}</Text>
+          <Text style={styles.controlButtonText}>Camera</Text>
         </TouchableOpacity>
         
-        {Platform.OS === 'web' && (
-          <TouchableOpacity 
-            style={[styles.controlButton, isScreenSharing && styles.controlButtonActive]}
-            disabled={!connected}
-            onPress={toggleScreenShare}
-          >
-            <Text style={styles.controlButtonIcon}>🖥️</Text>
-            <Text style={styles.controlButtonText}>Экран</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={[styles.controlButton, screenCapture.isStreaming && styles.controlButtonActive]}
+          disabled={!connected || Platform.OS !== 'web'}
+          onPress={toggleScreenShare}
+        >
+          <Text style={styles.controlButtonIcon}>🖥️</Text>
+          <Text style={styles.controlButtonText}>Screen</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
