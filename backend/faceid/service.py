@@ -211,7 +211,7 @@ class FaceIDService:
                         "email": best_user.email,
                         "phone": best_user.phone,
                         "avatar": best_user.avatar,
-                        "created_at": best_user.created_at
+                        "created_at": best_user.created_at.isoformat() if best_user.created_at else None
                     },
                     "confidence": best_match.get("confidence"),
                     "distance": best_match.get("distance"),
