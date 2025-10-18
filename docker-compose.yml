@@ -4,22 +4,27 @@ services:
       context: .
       dockerfile: dockerfiles/backend.Dockerfile
     ports:
-      - 8000:8000
+      - "8000:8000"
     volumes:
       - ./backend:/backend
     env_file:
       - .env
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
   postgres:
     image: postgres:15
     ports:
-      - 5432:5432
+      - "5432:5432"
     env_file:
       - .env
     volumes:
       - database_data:/var/lib/postgresql/data
-
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 volumes:
   database_data:

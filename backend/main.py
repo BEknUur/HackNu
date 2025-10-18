@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
+from services.auth.router import router as auth_router
+from database import Base, engine
 
 
 app = FastAPI(
@@ -9,7 +11,6 @@ app = FastAPI(
     description="Zamanbank API"
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -18,11 +19,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 router = APIRouter()
 router.prefix = "/api"
 
 @router.get("/health", tags=["system"])
 async def health():
     return {"health": "ok"}
+
 app.include_router(router)
+app.include_router(auth_router, prefix="/api/auth")
+
+@app.on_event("startup")
+def startup_event():
+    Base.metadata.create_all(bind=engine)

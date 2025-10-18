@@ -1,26 +1,32 @@
 from pydantic import BaseModel, EmailStr, Field
-from datetime import datetime 
+from datetime import datetime
+from typing import Optional
 
 
 class UserCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=50)
     surname: str = Field(..., min_length=2, max_length=50)
-    email: EmailStr = Field(..., unique=True)
-    phone: str = Field(..., unique=True)
+    email: EmailStr
+    phone: str
     password: str = Field(..., min_length=8)
-    avatar: str = Field(..., nullable=True)
+    avatar: str = Field(..., description="Path or URL to avatar file")
+
 
 class UserLogin(BaseModel):
-    email: EmailStr = Field(...)
-    password: str = Field(...)
+    email: EmailStr
+    password: str
 
-class User(BaseModel):
-    id: int = Field(...)
-    name: str = Field(...)
-    surname: str = Field(...)
-    email: EmailStr = Field(...)
-    phone: str = Field(...)
-    avatar: str = Field(...)
-    created_at: datetime = Field(...)
-    updated_at: datetime = Field(...)
-    deleted_at: datetime = Field(...)
+
+class UserRead(BaseModel):
+    id: int
+    name: str
+    surname: str
+    email: EmailStr
+    phone: str
+    avatar: str = Field(..., description="Path or URL to avatar file")
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True
