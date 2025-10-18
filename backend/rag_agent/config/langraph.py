@@ -6,13 +6,15 @@ supporting dynamic tool registration and multi-agent workflows.
 """
 
 from typing import Dict, Any, Optional, List, Callable, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import BaseTool
 
 
 class AgentConfig(BaseModel):
     """Base configuration for agents."""
+    model_config = ConfigDict(extra="allow")
+    
     name: str
     description: str
     enabled: bool = True
@@ -20,9 +22,6 @@ class AgentConfig(BaseModel):
     system_prompt: Optional[str] = None
     max_iterations: int = 5
     temperature: float = 0.3
-    
-    class Config:
-        extra = "allow"
 
 
 class SupervisorAgentConfig(AgentConfig):
@@ -171,11 +170,11 @@ class AgentFactory:
         tools = self.tool_registry.get_tools(config.tools)
         
         # Create a real LangGraph ReAct agent
-        # Use messages_modifier instead of state_modifier (correct parameter name in LangGraph)
+        # Use state_modifier to inject system prompt
         return create_react_agent(
             model=llm,
             tools=tools,
-            messages_modifier=config.system_prompt
+            state_modifier=config.system_prompt
         )
 
 

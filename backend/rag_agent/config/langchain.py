@@ -6,20 +6,19 @@ supporting multiple LLM providers and easy extension with new tools.
 """
 
 from typing import Dict, Any, Optional, List, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import os
 
 
 class LLMProviderConfig(BaseModel):
     """Base configuration for LLM providers."""
+    model_config = ConfigDict(extra="allow")
+    
     name: str
     model: str
     temperature: float = 0.3
     max_tokens: Optional[int] = None
     api_key: Optional[str] = None
-    
-    class Config:
-        extra = "allow"
 
 
 class GoogleConfig(LLMProviderConfig):
@@ -73,13 +72,12 @@ class LLMFactory:
 
 class ToolConfig(BaseModel):
     """Configuration for tools."""
+    model_config = ConfigDict(extra="allow")
+    
     name: str
     description: str
     enabled: bool = True
     parameters: Dict[str, Any] = Field(default_factory=dict)
-    
-    class Config:
-        extra = "allow"
 
 
 class LangChainConfig(BaseModel):
