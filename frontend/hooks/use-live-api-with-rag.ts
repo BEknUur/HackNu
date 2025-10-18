@@ -108,16 +108,20 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
     if (ragToolsEnabled && toolsLoaded && tools.length > 0) {
       console.log('[RAG] Connecting with RAG tools:', tools.map(t => t.name));
       
-      // Add tools to config
+      // Add tools to config - convert to proper Gemini format
       finalConfig.tools = tools.map(tool => ({
         functionDeclarations: [
           {
             name: tool.name,
             description: tool.description,
-            parameters: tool.parameters,
+            parameters: {
+              type: tool.parameters.type as any,
+              properties: tool.parameters.properties,
+              required: tool.parameters.required,
+            } as any,
           }
         ]
-      }));
+      })) as any;
 
       console.log('[RAG] Tools registered with Gemini:', finalConfig.tools);
     } else {
