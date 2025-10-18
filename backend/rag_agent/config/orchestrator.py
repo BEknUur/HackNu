@@ -115,9 +115,15 @@ class RAGSystem:
             "context": context
         })
         
+        # Extract the actual response content
+        if isinstance(response, dict) and "messages" in response:
+            response_content = response["messages"][0]["content"] if response["messages"] else str(response)
+        else:
+            response_content = str(response)
+        
         return {
             "query": user_query,
-            "response": response,
+            "response": response_content,
             "sources": context.get("sources", []),
             "confidence": context.get("confidence", 0.0)
         }
