@@ -154,4 +154,21 @@ class FaceVerificationService:
     def get_registered_faces_count(self) -> int:
         """Get count of registered faces"""
         return len(self.get_all_registered_images())
-
+    
+    def get_person_image_path(self, person_name: str) -> Optional[Path]:
+        """
+        Get the image path for a specific person
+        
+        Args:
+            person_name: The name of the person (filename without extension)
+            
+        Returns:
+            Path to the image file or None if not found
+        """
+        registered_images = self.get_all_registered_images()
+        
+        for img_path in registered_images:
+            if img_path.stem == person_name:
+                return img_path
+        
+        return None

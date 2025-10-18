@@ -27,6 +27,7 @@ export default function FaceVerifyScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [registeredCount, setRegisteredCount] = useState<number | null>(null);
+  const [matchedPersonImage, setMatchedPersonImage] = useState<string | null>(null);
 
   // Load registered faces count on mount
   useState(() => {
@@ -48,6 +49,7 @@ export default function FaceVerifyScreen() {
   function handleStartVerification() {
     setCapturedPhoto(null);
     setVerificationResult(null);
+    setMatchedPersonImage(null);
     setShowCamera(true);
   }
 
@@ -82,6 +84,16 @@ export default function FaceVerifyScreen() {
 
       const result: VerificationResult = await verifyResponse.json();
       setVerificationResult(result);
+
+      // Load matched person's image if verified
+      if (result.success && result.result?.verified && result.result.matched_person) {
+        try {
+          const imageUrl = `${API_URL}/image/${result.result.matched_person}`;
+          setMatchedPersonImage(imageUrl);
+        } catch (error) {
+          console.error('Error loading matched person image:', error);
+        }
+      }
 
       // Show result
       if (result.success && result.result) {
@@ -120,6 +132,7 @@ export default function FaceVerifyScreen() {
   function handleRetake() {
     setCapturedPhoto(null);
     setVerificationResult(null);
+    setMatchedPersonImage(null);
     setShowCamera(true);
   }
 
@@ -176,10 +189,23 @@ export default function FaceVerifyScreen() {
                 </View>
 
                 {verificationResult.result.verified && verificationResult.result.matched_person && (
-                  <View style={styles.resultDetail}>
-                    <Text style={styles.resultLabel}>Matched Person:</Text>
-                    <Text style={styles.resultValue}>{verificationResult.result.matched_person}</Text>
-                  </View>
+                  <>
+                    <View style={styles.resultDetail}>
+                      <Text style={styles.resultLabel}>Matched Person:</Text>
+                      <Text style={styles.resultValue}>{verificationResult.result.matched_person}</Text>
+                    </View>
+                    
+                    {matchedPersonImage && (
+                      <View style={styles.matchedImageContainer}>
+                        <Text style={styles.matchedImageLabel}>Registered Photo:</Text>
+                        <Image 
+                          source={{ uri: matchedPersonImage }} 
+                          style={styles.matchedPersonImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    )}
+                  </>
                 )}
 
                 <View style={styles.resultDetail}>
@@ -360,6 +386,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
+  },
+  matchedImageContainer: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  matchedImageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+  },
+  matchedPersonImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 3,
+    borderColor: '#4CAF50',
   },
   actions: {
     padding: 20,

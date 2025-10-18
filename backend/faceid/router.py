@@ -1,7 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from .service import FaceVerificationService
 from .schemas import VerificationResult
+import os
+from pathlib import Path
 
 router = APIRouter()
 
@@ -79,4 +81,33 @@ async def health_check():
         "detector": face_service.detector_backend,
         "metric": face_service.distance_metric
     }
+
+
+@router.get("/image/{person_name}")
+async def get_person_image(person_name: str):
+    """
+    Get the registered image for a specific person
+    
+    Args:
+        person_name: The name of the person (filename without extension)
+        
+    Returns:
+        The image file
+    """
+    try:
+        image_path = face_service.get_person_image_path(person_name)
+        
+        if not image_path or not image_path.exists():
+            raise HTTPException(status_code=404, detail=f"Image not found for person: {person_name}")
+        
+        return FileResponse(
+            path=str(image_path),
+            media_type=f"image/{image_path.suffix[1:]}",
+            filename=image_path.name
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving image: {str(e)}")
 
