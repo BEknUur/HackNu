@@ -35,7 +35,7 @@ app.include_router(auth_router, prefix="/api/auth")
 app.include_router(account_router, prefix="/api")
 app.include_router(transaction_router, prefix="/api")
 app.include_router(faceid_router, prefix="/api/faceid", tags=["Face Verification"])
-app.include_router(rag_router, prefix="/api/rag", tags=["RAG"])
+app.include_router(rag_router, tags=["RAG"])
 
 @app.on_event("startup")
 def startup_event():

@@ -6,7 +6,7 @@ Test script for RAG endpoints
 import requests
 import json
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://46.101.175.118:8000"
 
 def test_status_endpoint():
     """Test the status endpoint"""
