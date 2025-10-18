@@ -110,79 +110,87 @@ def get_function_declarations():
 # TOOL EXECUTION VIA SUPERVISOR AGENT
 # ============================================================================
 
-def execute_via_supervisor(user_query: str, tool_hint: Optional[str] = None) -> str:
+def execute_via_supervisor(query: str, tool_hint: Optional[str] = None) -> str:
     """
-    Execute query through the supervisor agent.
+    Execute query through the Supervisor Agent.
     
-    The supervisor will:
+    The Supervisor will:
     1. Analyze the query
-    2. Decide which specialist agent(s) to use
-    3. Call the appropriate agents with tools
-    4. Synthesize the results
+    2. Decide which specialized agent(s) to use
+    3. Delegate to appropriate agents (local_knowledge or web_search)
+    4. Synthesize the final response
     
     Args:
-        user_query: The user's query
-        tool_hint: Optional hint about which tool to prefer
+        query: The user's query
+        tool_hint: Optional hint about which tool to prefer (vector_search or web_search)
         
     Returns:
-        str: The supervisor's response with tool results
+        str: Synthesized response from the Supervisor Agent
     """
     try:
+        logger.info(f"🧠 Supervisor Agent: Processing query via multi-agent system")
+        logger.info(f"   Query: '{query}'")
+        logger.info(f"   Tool hint: {tool_hint}")
+        
         # Initialize the RAG system if not already done
         if not rag_system.supervisor_agent:
-            logger.info("Initializing RAG system...")
+            logger.info("   Initializing RAG system...")
             rag_system.initialize(environment="production")
-            logger.info("RAG system initialized successfully")
+            logger.info("   ✅ RAG system initialized")
         
-        logger.info(f"🧠 Routing query to SUPERVISOR AGENT: '{user_query}'")
-        if tool_hint:
-            logger.info(f"   Tool hint: {tool_hint}")
+        # Enhanced query with tool preference hint
+        enhanced_query = query
+        if tool_hint == "vector_search":
+            enhanced_query = f"[Internal Knowledge Query] {query}"
+        elif tool_hint == "web_search":
+            enhanced_query = f"[Web Search Query] {query}"
         
-        # Query through the supervisor agent
+        # Process through supervisor agent
+        logger.info(f"   🎯 Delegating to Supervisor Agent...")
         result = rag_system.query(
-            user_query=user_query,
-            context={"tool_hint": tool_hint} if tool_hint else {}
+            user_query=enhanced_query,
+            context={"tool_hint": tool_hint}
         )
         
-        logger.info(f"✅ Supervisor agent completed successfully")
-        logger.info(f"   Response length: {len(result['response'])} chars")
-        logger.info(f"   Sources used: {len(result.get('sources', []))}")
+        logger.info(f"   ✅ Supervisor Agent completed processing")
+        logger.info(f"   Sources used: {result.get('sources', [])}")
         
-        return result['response']
+        return result["response"]
         
     except Exception as e:
-        logger.error(f"❌ Supervisor agent error: {e}", exc_info=True)
-        raise
+        logger.error(f"❌ Supervisor Agent error: {e}")
+        logger.error(f"   Falling back to direct tool execution")
+        # Fallback to direct tool execution
+        if tool_hint == "vector_search":
+            return vector_search_tool.invoke({"query": query})
+        elif tool_hint == "web_search":
+            return web_search_tool.invoke({"query": query})
+        else:
+            raise
 
 
 def execute_vector_search(query: str, top_k: int = 3) -> str:
     """
-    Execute vector search via supervisor agent.
+    Execute vector search through Supervisor Agent.
     
-    Instead of directly calling the tool, this routes through the supervisor
-    which will delegate to the local_knowledge_agent.
+    This routes the query through the multi-agent system where:
+    - Supervisor analyzes the query
+    - Delegates to Local Knowledge Agent
+    - Returns synthesized response
     """
-    logger.info(f"📥 Vector search request received")
-    logger.info(f"   Query: '{query}', top_k={top_k}")
-    
-    # Create a query that hints at using vector search
-    user_query = f"Search the company knowledge base for: {query}"
-    return execute_via_supervisor(user_query, tool_hint="vector_search")
+    return execute_via_supervisor(query, tool_hint="vector_search")
 
 
 def execute_web_search(query: str, max_results: int = 5) -> str:
     """
-    Execute web search via supervisor agent.
+    Execute web search through Supervisor Agent.
     
-    Instead of directly calling the tool, this routes through the supervisor
-    which will delegate to the web_search_agent.
+    This routes the query through the multi-agent system where:
+    - Supervisor analyzes the query
+    - Delegates to Web Search Agent
+    - Returns synthesized response
     """
-    logger.info(f"🌐 Web search request received")
-    logger.info(f"   Query: '{query}', max_results={max_results}")
-    
-    # Create a query that hints at using web search
-    user_query = f"Search the web for current information about: {query}"
-    return execute_via_supervisor(user_query, tool_hint="web_search")
+    return execute_via_supervisor(query, tool_hint="web_search")
 
 
 TOOL_EXECUTORS = {
