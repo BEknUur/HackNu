@@ -25,5 +25,4 @@ router.prefix = "/api"
 @router.get("/health", tags=["system"])
 async def health():
     return {"health": "ok"}
-
 app.include_router(router)
