@@ -6,8 +6,12 @@ import logging
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent))
-from config.orchestrator import rag_system
+# Add the backend directory to path
+backend_dir = Path(__file__).parent.parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+from rag_agent.config.orchestrator import rag_system
 
 logger = logging.getLogger(__name__)
 
@@ -118,8 +122,8 @@ async def get_tools_status():
         Dict: Status of all tools
     """
     try:
-        from tools.vector_search import get_vector_store_status
-        from tools.web_search import get_web_search_status
+        from rag_agent.tools.vector_search import get_vector_store_status
+        from rag_agent.tools.web_search import get_web_search_status
         
         return {
             "vector_search": get_vector_store_status(),

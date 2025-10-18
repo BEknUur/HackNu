@@ -11,10 +11,11 @@ import os
 import sys
 from pathlib import Path
 
-# Add the parent directory to the path so we can import our modules
+# Add the backend directory to the path so we can import our modules
 current_dir = Path(__file__).parent
-parent_dir = current_dir.parent
-sys.path.insert(0, str(parent_dir))
+rag_agent_dir = current_dir.parent
+backend_dir = rag_agent_dir.parent
+sys.path.insert(0, str(backend_dir))
 
 def main():
     """Simple initialization function."""

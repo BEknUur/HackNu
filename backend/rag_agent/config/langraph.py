@@ -242,12 +242,12 @@ class LangGraphConfig(BaseModel):
         import sys
         from pathlib import Path
         
-        # Add the rag-agent directory to the path
-        rag_agent_dir = Path(__file__).parent.parent
-        if str(rag_agent_dir) not in sys.path:
-            sys.path.insert(0, str(rag_agent_dir))
+        # Add the backend directory to the path
+        backend_dir = Path(__file__).parent.parent.parent
+        if str(backend_dir) not in sys.path:
+            sys.path.insert(0, str(backend_dir))
         
-        from tools.vector_search import vector_search_tool
+        from rag_agent.tools.vector_search import vector_search_tool
         return vector_search_tool
     
     def _create_web_search_tool(self) -> BaseTool:
@@ -255,12 +255,12 @@ class LangGraphConfig(BaseModel):
         import sys
         from pathlib import Path
         
-        # Add the rag-agent directory to the path
-        rag_agent_dir = Path(__file__).parent.parent
-        if str(rag_agent_dir) not in sys.path:
-            sys.path.insert(0, str(rag_agent_dir))
+        # Add the backend directory to the path
+        backend_dir = Path(__file__).parent.parent.parent
+        if str(backend_dir) not in sys.path:
+            sys.path.insert(0, str(backend_dir))
         
-        from tools.web_search import web_search_tool
+        from rag_agent.tools.web_search import web_search_tool
         return web_search_tool
     
     

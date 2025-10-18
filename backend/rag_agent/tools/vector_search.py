@@ -7,8 +7,12 @@ from langchain_community.vectorstores import FAISS
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent))
-from utils.vector_store import VectorStoreManager
+# Add the backend directory to path
+backend_dir = Path(__file__).parent.parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+from rag_agent.utils.vector_store import VectorStoreManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -250,11 +254,7 @@ def initialize_vector_store(documents_path: str = "documents",
     Returns:
         bool: True if successful, False otherwise
     """
-    import sys
-    from pathlib import Path
-    
-    sys.path.append(str(Path(__file__).parent.parent))
-    from utils.vector_store import create_vector_store_from_documents
+    from rag_agent.utils.vector_store import create_vector_store_from_documents
     
     try:
         success = create_vector_store_from_documents(
