@@ -53,7 +53,7 @@ def main():
     
     try:
         # Import and use the vector store utility
-        from utils.vector_store import create_vector_store_from_documents
+        from rag_agent.utils.vector_store import create_vector_store_from_documents
         
         success = create_vector_store_from_documents(
             documents_path=str(documents_path),
@@ -68,7 +68,7 @@ def main():
             # Simple test
             print("\n🧪 Testing search...")
             try:
-                from tools.vector_search import vector_search_tool
+                from rag_agent.tools.vector_search import vector_search_tool
                 result = vector_search_tool.invoke({"query": "company policies"})
                 print(f"Test result: {result[:100]}...")
                 print("✅ Search is working!")
