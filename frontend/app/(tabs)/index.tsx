@@ -44,23 +44,33 @@ export default function HomeScreen() {
   }
 
   function handleLogout() {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
-          onPress: () => {
-            if (typeof localStorage !== 'undefined') {
-              localStorage.removeItem('user');
-            }
-            router.replace('/login');
-          }
+    // On web, Alert.alert doesn't work, so use confirm
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to logout?')) {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('user');
         }
-      ]
-    );
+        router.replace('/login');
+      }
+    } else {
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Logout', 
+            style: 'destructive',
+            onPress: () => {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('user');
+              }
+              router.replace('/login');
+            }
+          }
+        ]
+      );
+    }
   }
 
   const features = [

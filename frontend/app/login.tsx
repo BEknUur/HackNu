@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import FaceCamera from '@/components/face-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { ZamanColors } from '@/constants/theme';
 
 const API_URL = 'http://46.101.175.118:8000/api';
 
@@ -377,194 +378,210 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Ionicons name="person-circle" size={60} color="#007AFF" />
-          <Text style={styles.title}>
-            {mode === 'login' ? 'Login' : 'Register'}
-          </Text>
-          <Text style={styles.subtitle}>
-            {mode === 'login' 
-              ? 'Use Face ID to login' 
-              : 'Create your account with Face ID'}
-          </Text>
-        </View>
-
-        <View style={styles.content}>
-          {/* Face ID Section */}
-          <View style={styles.faceSection}>
-            <Text style={styles.sectionTitle}>
-              {mode === 'login' ? 'Login with Face ID' : 'Capture your face (required for Face ID)'}
+    <View style={styles.container}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardView} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Minimal Header */}
+          <View style={styles.header}>
+            <View style={styles.logoMark}>
+              <View style={styles.logoCircle} />
+            </View>
+            <Text style={styles.appName}>ZAMAN</Text>
+            <Text style={styles.tagline}>
+              {mode === 'login' ? 'Welcome back' : 'Get started'}
             </Text>
-            
-            {capturedPhoto ? (
-              <View style={styles.photoContainer}>
-                <Image source={{ uri: capturedPhoto }} style={styles.photo} />
+          </View>
+
+          {/* Content */}
+          <View style={styles.content}>
+            {/* Face ID Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>
+                {mode === 'login' ? 'Face ID' : 'Face ID (Required)'}
+              </Text>
+              
+              {capturedPhoto ? (
+                <View style={styles.photoContainer}>
+                  <Image source={{ uri: capturedPhoto }} style={styles.photo} />
+                  <TouchableOpacity 
+                    style={styles.linkButton}
+                    onPress={() => setShowCamera(true)}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.linkText}>Retake</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
                 <TouchableOpacity 
-                  style={styles.retakeButton}
+                  style={styles.captureButton}
                   onPress={() => setShowCamera(true)}
                   disabled={isLoading}
                 >
-                  <Ionicons name="camera" size={20} color="white" />
-                  <Text style={styles.retakeText}>Retake</Text>
+                  <Ionicons name="camera-outline" size={24} color={ZamanColors.persianGreen} />
+                  <Text style={styles.captureButtonText}>
+                    {mode === 'login' ? 'Scan face' : 'Capture face'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {mode === 'login' && capturedPhoto && (
+                <TouchableOpacity 
+                  style={styles.primaryButton}
+                  onPress={handleFaceVerify}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={ZamanColors.black} />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Verify & Login</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Divider */}
+            {mode === 'login' && (
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            )}
+
+            {/* Email/Password Login */}
+            {mode === 'login' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Email & Password</Text>
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor={ZamanColors.gray[400]}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!isLoading}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={ZamanColors.gray[400]}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  editable={!isLoading}
+                />
+                
+                <TouchableOpacity 
+                  style={styles.primaryButton}
+                  onPress={handleEmailPasswordLogin}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={ZamanColors.black} />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Login</Text>
+                  )}
                 </TouchableOpacity>
               </View>
-            ) : (
-              <TouchableOpacity 
-                style={styles.faceButton}
-                onPress={() => setShowCamera(true)}
-                disabled={isLoading}
-              >
-                <Ionicons name="camera" size={30} color="#007AFF" />
-                <Text style={styles.faceButtonText}>
-                  {mode === 'login' ? 'Scan Face to Login' : 'Capture Face'}
-                </Text>
-              </TouchableOpacity>
             )}
 
-            {mode === 'login' && capturedPhoto && (
-              <TouchableOpacity 
-                style={styles.verifyButton}
-                onPress={handleFaceVerify}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle" size={20} color="white" />
-                    <Text style={styles.buttonText}>Verify & Login</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+            {/* Register Form */}
+            {mode === 'register' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Personal Information</Text>
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="First name"
+                  placeholderTextColor={ZamanColors.gray[400]}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  editable={!isLoading}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Last name"
+                  placeholderTextColor={ZamanColors.gray[400]}
+                  value={surname}
+                  onChangeText={setSurname}
+                  autoCapitalize="words"
+                  editable={!isLoading}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor={ZamanColors.gray[400]}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!isLoading}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone"
+                  placeholderTextColor={ZamanColors.gray[400]}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  editable={!isLoading}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password (min 8 characters)"
+                  placeholderTextColor={ZamanColors.gray[400]}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  editable={!isLoading}
+                />
+
+                <TouchableOpacity 
+                  style={styles.primaryButton}
+                  onPress={handleRegister}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={ZamanColors.black} />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Create Account</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             )}
+
+            {/* Switch Mode */}
+            <TouchableOpacity 
+              style={styles.switchButton}
+              onPress={switchMode}
+              disabled={isLoading}
+            >
+              <Text style={styles.switchText}>
+                {mode === 'login' 
+                  ? "Don't have an account? " 
+                  : 'Already have an account? '}
+              </Text>
+              <Text style={styles.switchTextBold}>
+                {mode === 'login' ? 'Sign up' : 'Sign in'}
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Divider */}
-          {mode === 'login' && (
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
-            </View>
-          )}
-
-          {/* Email/Password Login Section */}
-          {mode === 'login' && (
-            <>
-              <Text style={styles.sectionTitle}>Login with Email & Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Email *"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Password *"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                editable={!isLoading}
-              />
-              <TouchableOpacity 
-                style={styles.submitButton}
-                onPress={handleEmailPasswordLogin}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <>
-                    <Ionicons name="log-in" size={20} color="white" />
-                    <Text style={styles.buttonText}>Login</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* Form Section for Register */}
-          {mode === 'register' && (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="First Name *"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                editable={!isLoading}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Last Name *"
-                value={surname}
-                onChangeText={setSurname}
-                autoCapitalize="words"
-                editable={!isLoading}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Email *"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number *"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                editable={!isLoading}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Password (min 8 characters) *"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                editable={!isLoading}
-              />
-
-              {/* Register Button */}
-              <TouchableOpacity 
-                style={styles.submitButton}
-                onPress={handleRegister}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={styles.buttonText}>Register</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* Switch Mode */}
-          <TouchableOpacity 
-            style={styles.switchButton}
-            onPress={switchMode}
-            disabled={isLoading}
-          >
-            <Text style={styles.switchText}>
-              {mode === 'login' 
-                ? "Don't have an account? Register" 
-                : 'Already have an account? Login'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Camera Modal */}
       <Modal
@@ -578,151 +595,155 @@ export default function LoginScreen() {
           isVerifying={false}
         />
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: ZamanColors.white,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
   },
   header: {
-    backgroundColor: 'white',
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingBottom: 40,
+    paddingHorizontal: 32,
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
-  title: {
+  logoMark: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  logoCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: ZamanColors.persianGreen,
+    borderWidth: 3,
+    borderColor: ZamanColors.solar,
+  },
+  appName: {
     fontSize: 32,
-    fontWeight: 'bold',
-    marginTop: 10,
-    color: '#333',
+    fontWeight: '300',
+    letterSpacing: 8,
+    color: ZamanColors.black,
+    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
+  tagline: {
+    fontSize: 15,
+    color: ZamanColors.gray[500],
+    fontWeight: '400',
   },
   content: {
-    padding: 24,
+    paddingHorizontal: 32,
+    paddingBottom: 40,
   },
-  sectionTitle: {
-    fontSize: 18,
+  section: {
+    marginBottom: 40,
+  },
+  sectionLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
-    textAlign: 'center',
+    color: ZamanColors.gray[600],
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 16,
   },
-  faceSection: {
-    marginBottom: 20,
-  },
-  faceButton: {
-    backgroundColor: 'white',
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    borderStyle: 'dashed',
-    borderRadius: 15,
-    padding: 40,
+  captureButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: ZamanColors.white,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
+    borderRadius: 12,
+    paddingVertical: 20,
+    gap: 12,
   },
-  faceButtonText: {
-    fontSize: 18,
-    color: '#007AFF',
-    marginTop: 15,
-    fontWeight: '600',
+  captureButtonText: {
+    fontSize: 16,
+    color: ZamanColors.persianGreen,
+    fontWeight: '500',
   },
   photoContainer: {
     alignItems: 'center',
+    gap: 16,
   },
   photo: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: '#ddd',
-    borderWidth: 3,
-    borderColor: '#007AFF',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: ZamanColors.gray[100],
+    borderWidth: 2,
+    borderColor: ZamanColors.persianGreen,
   },
-  retakeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#666',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    marginTop: 15,
+  linkButton: {
+    paddingVertical: 8,
   },
-  retakeText: {
-    color: 'white',
-    marginLeft: 8,
+  linkText: {
+    fontSize: 15,
+    color: ZamanColors.persianGreen,
+    fontWeight: '500',
+  },
+  input: {
+    backgroundColor: ZamanColors.white,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     fontSize: 16,
-    fontWeight: '600',
+    color: ZamanColors.black,
+    marginBottom: 12,
   },
-  verifyButton: {
-    backgroundColor: '#4CAF50',
-    flexDirection: 'row',
+  primaryButton: {
+    backgroundColor: ZamanColors.solar,
+    borderRadius: 12,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 12,
-    marginTop: 20,
+    marginTop: 8,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ZamanColors.black,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 30,
+    marginVertical: 32,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#ddd',
+    backgroundColor: ZamanColors.gray[200],
   },
   dividerText: {
-    marginHorizontal: 15,
-    fontSize: 14,
-    color: '#999',
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 15,
-    fontSize: 16,
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 12,
-    marginTop: 10,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: ZamanColors.gray[400],
+    fontWeight: '400',
   },
   switchButton: {
-    marginTop: 25,
-    alignItems: 'center',
-    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 32,
+    paddingVertical: 16,
   },
   switchText: {
-    color: '#007AFF',
-    fontSize: 16,
+    fontSize: 15,
+    color: ZamanColors.gray[600],
+  },
+  switchTextBold: {
+    fontSize: 15,
+    color: ZamanColors.persianGreen,
     fontWeight: '600',
   },
 });
