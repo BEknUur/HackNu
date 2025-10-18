@@ -236,6 +236,8 @@ class LangGraphConfig(BaseModel):
     # Agent factory
     agent_factory: Optional[AgentFactory] = None
     
+    model_config = {"arbitrary_types_allowed": True}
+    
     def __init__(self, **data):
         super().__init__(**data)
         self.agent_factory = AgentFactory(self.tool_registry)
