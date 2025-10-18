@@ -35,16 +35,20 @@ async def debug_vector_search(request: VectorSearchDebugRequest):
         # Get vector store manager directly for detailed results
         from rag_agent.utils.vector_store import VectorStoreManager
         from rag_agent.config.langchain import langchain_config
+        import os
         
         config = langchain_config
+        documents_path = "rag_agent/documents"
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        
         manager = VectorStoreManager(
-            documents_path=config.documents_path,
+            documents_path=documents_path,
             vector_store_path=config.vector_store_path,
             embedding_model=config.embedding_model
         )
         
         # Initialize embeddings
-        manager.initialize_embeddings(config.google_api_key)
+        manager.initialize_embeddings(google_api_key)
         
         # Load vector store
         success = manager.load_vector_store()
@@ -87,11 +91,14 @@ async def get_vector_store_info():
     try:
         from rag_agent.tools.vector_search import VectorSearchTool
         from rag_agent.config.langchain import langchain_config
+        import os
         
         config = langchain_config
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        
         tool = VectorSearchTool(
             vector_store_path=config.vector_store_path,
-            google_api_key=config.google_api_key
+            google_api_key=google_api_key
         )
         
         # Check if vector store is loaded

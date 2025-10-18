@@ -21,24 +21,29 @@ def test_detailed_search():
     
     from rag_agent.utils.vector_store import VectorStoreManager
     from rag_agent.config.langchain import langchain_config
+    import os
     
     # Get config
     config = langchain_config
+    documents_path = "rag_agent/documents"
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    
     print(f"\n📁 Configuration:")
-    print(f"   Documents path: {config.documents_path}")
+    print(f"   Documents path: {documents_path}")
     print(f"   Vector store path: {config.vector_store_path}")
     print(f"   Embedding model: {config.embedding_model}")
+    print(f"   Google API Key: {'✅ Found' if google_api_key else '❌ Missing'}")
     
     # Initialize manager
     manager = VectorStoreManager(
-        documents_path=config.documents_path,
+        documents_path=documents_path,
         vector_store_path=config.vector_store_path,
         embedding_model=config.embedding_model
     )
     
     # Initialize embeddings
     print(f"\n🔄 Initializing embeddings...")
-    success = manager.initialize_embeddings(config.google_api_key)
+    success = manager.initialize_embeddings(google_api_key)
     if not success:
         print("❌ Failed to initialize embeddings")
         return
