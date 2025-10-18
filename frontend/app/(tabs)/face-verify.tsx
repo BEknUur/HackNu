@@ -2,23 +2,28 @@ import { StyleSheet, View, Text, TouchableOpacity, Alert, Modal, Image, Activity
 import { useState } from 'react';
 import FaceCamera from '@/components/face-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { config } from '@/lib/config';
 
-const API_URL = `${config.backendURL}${config.endpoints.faceid}`;
+const API_URL = 'http://46.101.175.118:8000/api/faceid';
 
-interface VerificationResult {
+interface UserMatchInfo {
+  user_id: number;
+  name: string;
+  surname: string;
+  email: string;
+  phone: string;
+  avatar: string;
+  created_at?: string;
+}
+
+interface FaceVerificationResult {
   success: boolean;
+  verified: boolean;
   message: string;
-  result?: {
-    verified: boolean;
-    confidence: number;
-    matched_person?: string;
-    distance: number;
-    threshold: number;
-    model: string;
-    detector_backend: string;
-    similarity_metric: string;
-  };
+  user?: UserMatchInfo;
+  confidence?: number;
+  distance?: number;
+  threshold?: number;
+  model?: string;
   error?: string;
 }
 
@@ -26,31 +31,11 @@ export default function FaceVerifyScreen() {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
-  const [registeredCount, setRegisteredCount] = useState<number | null>(null);
-  const [matchedPersonImage, setMatchedPersonImage] = useState<string | null>(null);
-
-  // Load registered faces count on mount
-  useState(() => {
-    fetchRegisteredCount();
-  });
-
-  async function fetchRegisteredCount() {
-    try {
-      const response = await fetch(`${API_URL}/registered-count`);
-      const data = await response.json();
-      if (data.success) {
-        setRegisteredCount(data.count);
-      }
-    } catch (error) {
-      console.error('Error fetching registered count:', error);
-    }
-  }
+  const [verificationResult, setVerificationResult] = useState<FaceVerificationResult | null>(null);
 
   function handleStartVerification() {
     setCapturedPhoto(null);
     setVerificationResult(null);
-    setMatchedPersonImage(null);
     setShowCamera(true);
   }
 
@@ -64,17 +49,13 @@ export default function FaceVerifyScreen() {
     setIsVerifying(true);
     
     try {
-      // Create form data
       const formData = new FormData();
       
-      // Convert image URI to blob for upload
       const response = await fetch(photoUri);
       const blob = await response.blob();
       
-      // @ts-ignore - FormData append handles File/Blob
       formData.append('file', blob, 'photo.jpg');
 
-      // Send to backend
       const verifyResponse = await fetch(`${API_URL}/verify`, {
         method: 'POST',
         body: formData,
@@ -83,31 +64,20 @@ export default function FaceVerifyScreen() {
         },
       });
 
-      const result: VerificationResult = await verifyResponse.json();
+      const result: FaceVerificationResult = await verifyResponse.json();
       setVerificationResult(result);
 
-      // Load matched person's image if verified
-      if (result.success && result.result?.verified && result.result.matched_person) {
-        try {
-          const imageUrl = `${API_URL}/image/${result.result.matched_person}`;
-          setMatchedPersonImage(imageUrl);
-        } catch (error) {
-          console.error('Error loading matched person image:', error);
-        }
-      }
-
-      // Show result
-      if (result.success && result.result) {
-        if (result.result.verified) {
+      if (result.success) {
+        if (result.verified && result.user) {
           Alert.alert(
             '✅ Verification Successful',
-            `Welcome back, ${result.result.matched_person}!\n\nConfidence: ${(result.result.confidence * 100).toFixed(1)}%`,
+            `Welcome back, ${result.user.name} ${result.user.surname}!\n\nConfidence: ${result.confidence ? (result.confidence * 100).toFixed(1) : 'N/A'}%`,
             [{ text: 'OK' }]
           );
         } else {
           Alert.alert(
             '❌ Verification Failed',
-            `Face not recognized in our database.\n\nPlease try again or register your face first.`,
+            result.message || 'Face not recognized in our database.',
             [{ text: 'OK' }]
           );
         }
@@ -133,31 +103,21 @@ export default function FaceVerifyScreen() {
   function handleRetake() {
     setCapturedPhoto(null);
     setVerificationResult(null);
-    setMatchedPersonImage(null);
     setShowCamera(true);
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <Ionicons name="shield-checkmark" size={60} color="#007AFF" />
+        <Ionicons name="shield-checkmark" size={50} color="#007AFF" />
         <Text style={styles.title}>Face Verification</Text>
-        <Text style={styles.subtitle}>
-          Verify your identity using facial recognition
-        </Text>
-        {registeredCount !== null && (
-          <Text style={styles.registeredCount}>
-            {registeredCount} face{registeredCount !== 1 ? 's' : ''} registered in database
-          </Text>
-        )}
+        <Text style={styles.subtitle}>Verify your identity using facial recognition</Text>
       </View>
 
-      {/* Content */}
       <View style={styles.content}>
         {!capturedPhoto ? (
           <View style={styles.emptyState}>
-            <Ionicons name="scan-outline" size={100} color="#ccc" />
+            <Ionicons name="scan-outline" size={80} color="#ccc" />
             <Text style={styles.emptyStateText}>
               Click the button below to start face verification
             </Text>
@@ -173,62 +133,72 @@ export default function FaceVerifyScreen() {
               </View>
             )}
 
-            {verificationResult && verificationResult.result && (
+            {verificationResult && (
               <View style={styles.resultCard}>
                 <View style={[
                   styles.resultBadge,
-                  verificationResult.result.verified ? styles.successBadge : styles.failureBadge
+                  verificationResult.verified ? styles.successBadge : styles.failureBadge
                 ]}>
                   <Ionicons 
-                    name={verificationResult.result.verified ? "checkmark-circle" : "close-circle"} 
-                    size={24} 
+                    name={verificationResult.verified ? "checkmark-circle" : "close-circle"} 
+                    size={20} 
                     color="white" 
                   />
                   <Text style={styles.resultBadgeText}>
-                    {verificationResult.result.verified ? 'VERIFIED' : 'NOT VERIFIED'}
+                    {verificationResult.verified ? 'VERIFIED' : 'NOT VERIFIED'}
                   </Text>
                 </View>
 
-                {verificationResult.result.verified && verificationResult.result.matched_person && (
-                  <>
-                    <View style={styles.resultDetail}>
-                      <Text style={styles.resultLabel}>Matched Person:</Text>
-                      <Text style={styles.resultValue}>{verificationResult.result.matched_person}</Text>
-                    </View>
-                    
-                    {matchedPersonImage && (
-                      <View style={styles.matchedImageContainer}>
-                        <Text style={styles.matchedImageLabel}>Registered Photo:</Text>
-                        <Image 
-                          source={{ uri: matchedPersonImage }} 
-                          style={styles.matchedPersonImage}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    )}
-                  </>
+                {verificationResult.verified && verificationResult.user && (
+                  <View style={styles.resultDetail}>
+                    <Text style={styles.resultLabel}>Matched Person:</Text>
+                    <Text style={styles.resultValue}>
+                      {verificationResult.user.name} {verificationResult.user.surname}
+                    </Text>
+                  </View>
                 )}
 
-                <View style={styles.resultDetail}>
-                  <Text style={styles.resultLabel}>Confidence:</Text>
-                  <Text style={styles.resultValue}>
-                    {(verificationResult.result.confidence * 100).toFixed(1)}%
-                  </Text>
-                </View>
+                {verificationResult.confidence && (
+                  <View style={styles.resultDetail}>
+                    <Text style={styles.resultLabel}>Confidence:</Text>
+                    <Text style={styles.resultValue}>
+                      {(verificationResult.confidence * 100).toFixed(1)}%
+                    </Text>
+                  </View>
+                )}
 
-                <View style={styles.resultDetail}>
-                  <Text style={styles.resultLabel}>Distance:</Text>
-                  <Text style={styles.resultValue}>
-                    {verificationResult.result.distance.toFixed(4)}
-                  </Text>
-                </View>
+                {verificationResult.distance && (
+                  <View style={styles.resultDetail}>
+                    <Text style={styles.resultLabel}>Distance:</Text>
+                    <Text style={styles.resultValue}>
+                      {verificationResult.distance.toFixed(4)}
+                    </Text>
+                  </View>
+                )}
+
+                {verificationResult.threshold && (
+                  <View style={styles.resultDetail}>
+                    <Text style={styles.resultLabel}>Threshold:</Text>
+                    <Text style={styles.resultValue}>
+                      {verificationResult.threshold.toFixed(4)}
+                    </Text>
+                  </View>
+                )}
+
+                {verificationResult.model && (
+                  <View style={styles.resultDetail}>
+                    <Text style={styles.resultLabel}>Model:</Text>
+                    <Text style={styles.resultValue}>
+                      {verificationResult.model}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
         )}
       </View>
 
-      {/* Actions */}
       <View style={styles.actions}>
         {capturedPhoto ? (
           <TouchableOpacity 
@@ -236,7 +206,7 @@ export default function FaceVerifyScreen() {
             onPress={handleRetake}
             disabled={isVerifying}
           >
-            <Ionicons name="camera" size={24} color="white" />
+            <Ionicons name="camera" size={20} color="white" />
             <Text style={styles.buttonText}>Try Again</Text>
           </TouchableOpacity>
         ) : (
@@ -244,13 +214,12 @@ export default function FaceVerifyScreen() {
             style={styles.startButton} 
             onPress={handleStartVerification}
           >
-            <Ionicons name="camera" size={24} color="white" />
+            <Ionicons name="camera" size={20} color="white" />
             <Text style={styles.buttonText}>Start Verification</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Camera Modal */}
       <Modal
         visible={showCamera}
         animationType="slide"
@@ -273,30 +242,24 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: 'white',
-    paddingTop: 60,
-    paddingBottom: 30,
+    paddingTop: 50,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginTop: 15,
+    marginTop: 10,
     color: '#333',
   },
   subtitle: {
     fontSize: 14,
     color: '#666',
-    marginTop: 8,
+    marginTop: 5,
     textAlign: 'center',
-  },
-  registeredCount: {
-    fontSize: 12,
-    color: '#007AFF',
-    marginTop: 10,
-    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -310,17 +273,17 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 16,
     color: '#999',
-    marginTop: 20,
+    marginTop: 15,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
   },
   resultContainer: {
     flex: 1,
   },
   capturedImage: {
     width: '100%',
-    height: 400,
-    borderRadius: 15,
+    height: 300,
+    borderRadius: 10,
     backgroundColor: '#ddd',
   },
   verifyingOverlay: {
@@ -332,33 +295,33 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 15,
+    borderRadius: 10,
   },
   verifyingText: {
     color: 'white',
     fontSize: 16,
-    marginTop: 15,
+    marginTop: 10,
     fontWeight: '600',
   },
   resultCard: {
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 20,
-    marginTop: 20,
+    borderRadius: 10,
+    padding: 15,
+    marginTop: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 3,
   },
   resultBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    marginBottom: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginBottom: 10,
   },
   successBadge: {
     backgroundColor: '#4CAF50',
@@ -368,14 +331,14 @@ const styles = StyleSheet.create({
   },
   resultBadgeText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginLeft: 5,
   },
   resultDetail: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -388,58 +351,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  matchedImageContainer: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  matchedImageLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 10,
-  },
-  matchedPersonImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 3,
-    borderColor: '#4CAF50',
-  },
   actions: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 30,
   },
   startButton: {
     backgroundColor: '#007AFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 12,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingVertical: 15,
+    borderRadius: 8,
   },
   retakeButton: {
     backgroundColor: '#FF9500',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 12,
-    shadowColor: '#FF9500',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingVertical: 15,
+    borderRadius: 8,
   },
   buttonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 10,
+    marginLeft: 8,
   },
 });
-
