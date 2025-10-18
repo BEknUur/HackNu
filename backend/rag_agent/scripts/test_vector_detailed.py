@@ -20,10 +20,10 @@ def test_detailed_search():
     print("="*100)
     
     from rag_agent.utils.vector_store import VectorStoreManager
-    from rag_agent.config.langchain import get_langchain_config
+    from rag_agent.config.langchain import langchain_config
     
     # Get config
-    config = get_langchain_config()
+    config = langchain_config
     print(f"\n📁 Configuration:")
     print(f"   Documents path: {config.documents_path}")
     print(f"   Vector store path: {config.vector_store_path}")

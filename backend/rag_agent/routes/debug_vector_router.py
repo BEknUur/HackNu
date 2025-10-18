@@ -34,9 +34,9 @@ async def debug_vector_search(request: VectorSearchDebugRequest):
         
         # Get vector store manager directly for detailed results
         from rag_agent.utils.vector_store import VectorStoreManager
-        from rag_agent.config.langchain import get_langchain_config
+        from rag_agent.config.langchain import langchain_config
         
-        config = get_langchain_config()
+        config = langchain_config
         manager = VectorStoreManager(
             documents_path=config.documents_path,
             vector_store_path=config.vector_store_path,
@@ -86,9 +86,9 @@ async def get_vector_store_info():
     """
     try:
         from rag_agent.tools.vector_search import VectorSearchTool
-        from rag_agent.config.langchain import get_langchain_config
+        from rag_agent.config.langchain import langchain_config
         
-        config = get_langchain_config()
+        config = langchain_config
         tool = VectorSearchTool(
             vector_store_path=config.vector_store_path,
             google_api_key=config.google_api_key
