@@ -1,7 +1,3 @@
-"""
-Supervisor Agent - orchestrates all specialized agents.
-"""
-
 from langgraph.prebuilt import create_react_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from config.settings import settings
@@ -21,14 +17,12 @@ def create_supervisor_agent(handoff_tools: list):
         A compiled LangGraph ReAct agent
     """
     
-    # Initialize LLM with slightly higher temperature for reasoning
     llm = ChatGoogleGenerativeAI(
         model=settings.llm_model,
         google_api_key=settings.google_api_key,
-        temperature=settings.llm_temperature  # 0.3 for balanced reasoning
+        temperature=0.3
     )
-    
-    # Create supervisor agent
+ 
     agent = create_react_agent(
         llm,
         tools=handoff_tools,

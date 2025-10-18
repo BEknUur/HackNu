@@ -8,11 +8,10 @@ from .schemas import FaceVerificationResult
 
 router = APIRouter()
 
-# Initialize Face ID Service with optimal settings
 face_service = FaceIDService(
-    model_name="Facenet512",  # High accuracy model
-    detector_backend="retinaface",  # Best detector for face detection
-    distance_metric="cosine"  # Standard metric for face similarity
+    model_name="Facenet512", 
+    detector_backend="retinaface", 
+    distance_metric="cosine"
 )
 
 

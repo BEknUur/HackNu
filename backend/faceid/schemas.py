@@ -11,7 +11,7 @@ class UserMatchInfo(BaseModel):
     email: str
     phone: str
     avatar: str
-    created_at: Optional[str] = None  # ISO format datetime string
+    created_at: Optional[str] = None 
 
 
 class FaceVerificationResult(BaseModel):
