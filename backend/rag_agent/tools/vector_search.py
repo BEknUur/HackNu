@@ -187,7 +187,6 @@ def vector_search_with_metadata(query: str, k: int = 3) -> Dict[str, Any]:
         }
 
 
-@tool
 def get_vector_store_status() -> str:
     """
     Get the current status of the vector store.

@@ -192,7 +192,6 @@ def web_search_news_tool(query: str, max_results: int = 3) -> str:
     return tool_instance.search_news(query, max_results)
 
 
-@tool
 def get_web_search_status() -> str:
     """
     Get the current status of the web search tool.
