@@ -90,6 +90,14 @@ def force_reindex():
         return
     print("✅ Vector store created successfully")
     
+    # Save vector store to disk
+    print(f"\n💾 Saving vector store to disk...")
+    success = manager.save_vector_store()
+    if not success:
+        print("❌ Failed to save vector store")
+        return
+    print("✅ Vector store saved successfully")
+    
     # Test search
     print(f"\n🧪 Testing search for EQUIPMENT...")
     results = manager.search_documents("equipment technology Zaman Bank", k=3)
