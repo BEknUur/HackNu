@@ -54,21 +54,19 @@ class LLMFactory:
             # Check if we have a valid API key
             api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY")
             if not api_key or api_key == "mock-google-api-key":
-                # Use a mock LLM for testing
-                from langchain.llms.fake import FakeListLLM
-                return FakeListLLM(responses=[
-                    "I'm a mock LLM for testing purposes. I can help you with your queries.",
-                    "This is a test response from the mock LLM.",
-                    "The RAG system is working correctly with the mock LLM."
-                ])
-            else:
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                return ChatGoogleGenerativeAI(
-                    model=config.model,
-                    google_api_key=api_key,
-                    temperature=config.temperature,
-                    max_output_tokens=config.max_tokens
+                raise ValueError(
+                    "GOOGLE_API_KEY environment variable is not set or is invalid. "
+                    "Please set a valid Google API key to use the RAG system. "
+                    "Get your API key from: https://makersuite.google.com/app/apikey"
                 )
+            
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            return ChatGoogleGenerativeAI(
+                model=config.model,
+                google_api_key=api_key,
+                temperature=config.temperature,
+                max_output_tokens=config.max_tokens
+            )
         else:
             raise ValueError(f"LLM creation not implemented for provider: {provider}")
 
@@ -120,16 +118,18 @@ class LangChainConfig(BaseModel):
         """Get configured embedding instance."""
         if self.embedding_provider == "google":
             api_key = os.getenv("GOOGLE_API_KEY")
-            if not api_key or api_key == "mock-google-api-key":
-                # Use a mock embedding for testing
-                from langchain.embeddings.fake import FakeEmbeddings
-                return FakeEmbeddings(size=1536)
-            else:
-                from langchain_google_genai import GoogleGenerativeAIEmbeddings
-                return GoogleGenerativeAIEmbeddings(
-                    model=self.embedding_model,
-                    google_api_key=api_key
+            if not api_key:
+                raise ValueError(
+                    "GOOGLE_API_KEY environment variable is not set. "
+                    "Please set a valid Google API key to use embeddings. "
+                    "Get your API key from: https://makersuite.google.com/app/apikey"
                 )
+            
+            from langchain_google_genai import GoogleGenerativeAIEmbeddings
+            return GoogleGenerativeAIEmbeddings(
+                model=self.embedding_model,
+                google_api_key=api_key
+            )
         else:
             raise ValueError(f"Embedding provider not supported: {self.embedding_provider}")
     

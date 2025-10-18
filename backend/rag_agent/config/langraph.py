@@ -29,62 +29,45 @@ class SupervisorAgentConfig(AgentConfig):
     """Configuration for supervisor agent."""
     name: str = "supervisor"
     description: str = "Orchestrates and delegates tasks to specialized agents"
+    tools: List[str] = ["vector_search", "web_search"]  # Supervisor has access to all tools
     system_prompt: str = """
-You are the SUPERVISOR of a multi-agent RAG system.
+You are an intelligent RAG (Retrieval-Augmented Generation) assistant that helps answer questions using available tools.
 
-=== YOUR ROLE ===
-You coordinate specialized agents to answer user queries comprehensively.
-You are the orchestrator, not a worker - ALWAYS delegate to specialists.
+=== AVAILABLE TOOLS ===
+1. vector_search:
+   - Use for: Company policies, internal documents, procedures, local knowledge
+   - Searches: Local knowledge base using semantic search
+   - Example: "What is our remote work policy?"
 
-=== AVAILABLE AGENTS ===
-1. local_knowledge_agent:
-   - Use for: Company policies, internal documents, procedures
-   - Searches: Local knowledge base (vector search)
-   - Example: 'What is our remote work policy?'
+2. web_search:
+   - Use for: Current events, online information, recent news, public information
+   - Searches: Web using Tavily API
+   - Example: "Find information about ZamanBank", "What are the latest AI trends?"
 
-2. web_search_agent:
-   - Use for: Current events, online information, recent news
-   - Searches: Web (Tavily API)
-   - Example: 'What are the latest AI trends?'
+=== DECISION PROCESS ===
+1. ANALYZE the user's query:
+   - Is this about internal company information? → Use vector_search
+   - Is this about external/public information? → Use web_search
+   - Is this about a specific company, product, or current event? → Use web_search
+   - Need both internal and external info? → Use both tools
 
+2. EXECUTE:
+   - Call the appropriate tool(s) with clear, specific queries
+   - Extract relevant information from tool results
 
-=== REASONING PROCESS (ReAct + CoT) ===
-1. ANALYZE: Break down the user's query
-   - What information is needed?
-   - What type of information (internal vs. public)?
-   - Does it require multiple sources?
-
-2. PLAN: Decide which agent(s) to use
-   - Can ONE agent handle it? → Delegate to that agent
-   - Need MULTIPLE sources? → Call agents sequentially
-   - Example: Policy + Current trends → local + web
-
-3. DELEGATE: Provide clear task descriptions
-   - Formulate a specific, clear task for each agent
-   - Include all necessary context
-   - Example: 'Search for information about remote work policies'
-
-4. SYNTHESIZE: After agents respond
-   - Combine information from all agents
-   - Create a coherent, comprehensive answer
-   - Cite sources (local docs, URLs, etc.)
-   - Address all parts of the original query
-
-=== DELEGATION RULES ===
-- You can call MULTIPLE agents (sequential or parallel)
-- Always provide specific task descriptions when delegating
-- Wait for agent responses before synthesizing
-- DO NOT answer directly - always use agents
-- DO NOT make up information
+3. SYNTHESIZE:
+   - Provide a comprehensive answer based on tool results
+   - Cite sources (document names, URLs, etc.)
+   - If information is not found, state this clearly
+   - DO NOT make up information
 
 === RESPONSE FORMAT ===
-After receiving agent responses:
-1. Start with a direct answer to the user's question
-2. Provide details from each agent (cite sources)
-3. If information is incomplete, state what's missing
-4. Keep responses clear and well-structured
+- Start with a direct answer to the user's question
+- Include specific details and facts from the tool results
+- Cite sources when available
+- Keep responses clear and well-structured
 
-Now, analyze the user's query and delegate appropriately!
+Now, analyze the user's query and use the appropriate tools to answer it!
 """
 
 
@@ -187,38 +170,11 @@ class AgentFactory:
         # Get tools for this agent
         tools = self.tool_registry.get_tools(config.tools)
         
-        # Create a mock agent for testing
-        class MockAgent:
-            def __init__(self, name: str, system_prompt: str, tools: list):
-                self.name = name
-                self.system_prompt = system_prompt
-                self.tools = tools
-            
-            def invoke(self, inputs: dict) -> dict:
-                """Mock invoke method that returns a simple response."""
-                user_query = inputs.get("messages", [{}])[0].get("content", "No query provided")
-                
-                # Simulate tool usage
-                tool_results = []
-                for tool in self.tools:
-                    if hasattr(tool, 'name') and tool.name == "vector_search":
-                        tool_results.append("Mock vector search results for your query.")
-                    elif hasattr(tool, 'name') and tool.name == "web_search":
-                        tool_results.append("Mock web search results for your query.")
-                
-                response = f"Mock {self.name} response: I've processed your query '{user_query}'. "
-                if tool_results:
-                    response += "Tool results: " + " ".join(tool_results)
-                else:
-                    response += "No tools were used in this mock response."
-                
-                return {"messages": [{"role": "assistant", "content": response}]}
-        
-        # Return mock agent instead of real LangGraph agent
-        return MockAgent(
-            name=config.name,
-            system_prompt=config.system_prompt,
-            tools=tools
+        # Create a real LangGraph ReAct agent
+        return create_react_agent(
+            model=llm,
+            tools=tools,
+            state_modifier=config.system_prompt
         )
 
 

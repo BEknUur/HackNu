@@ -107,25 +107,44 @@ class RAGSystem:
         
         # Prepare context
         context = context or {}
-        context["user_query"] = user_query
         
         # Process through supervisor agent
+        # LangGraph's create_react_agent expects messages in a specific format
+        from langchain_core.messages import HumanMessage
+        
         response = self.supervisor_agent.invoke({
-            "messages": [{"role": "user", "content": user_query}],
-            "context": context
+            "messages": [HumanMessage(content=user_query)]
         })
         
-        # Extract the actual response content
+        # Extract the actual response content from LangGraph response
+        # LangGraph returns: {"messages": [HumanMessage, AIMessage, ...]}
+        response_content = ""
+        sources = []
+        
         if isinstance(response, dict) and "messages" in response:
-            response_content = response["messages"][0]["content"] if response["messages"] else str(response)
+            messages = response["messages"]
+            # Get the last AI message
+            for msg in reversed(messages):
+                if hasattr(msg, 'content') and msg.content:
+                    response_content = msg.content
+                    break
+            
+            # Extract sources from tool calls if any
+            for msg in messages:
+                if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                    for tool_call in msg.tool_calls:
+                        sources.append({
+                            "tool": tool_call.get("name", "unknown"),
+                            "query": tool_call.get("args", {})
+                        })
         else:
             response_content = str(response)
         
         return {
             "query": user_query,
             "response": response_content,
-            "sources": context.get("sources", []),
-            "confidence": context.get("confidence", 0.0)
+            "sources": sources or context.get("sources", []),
+            "confidence": context.get("confidence", 0.8)
         }
     
     def add_tool(self, name: str, tool: Any):

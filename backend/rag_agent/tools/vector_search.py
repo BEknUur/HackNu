@@ -32,8 +32,15 @@ class VectorSearchTool:
         self.vector_store_path = vector_store_path
         self.embedding_model = embedding_model
         self.google_api_key = google_api_key or os.getenv("GOOGLE_API_KEY")
+        
+        if not self.google_api_key:
+            raise ValueError(
+                "GOOGLE_API_KEY environment variable is not set. "
+                "Please set a valid Google API key to use vector search. "
+                "Get your API key from: https://makersuite.google.com/app/apikey"
+            )
+        
         self.vector_store_manager = None
-        self.mock_mode = False
         self._initialize()
     
     def _initialize(self):
@@ -46,17 +53,16 @@ class VectorSearchTool:
             
             # Initialize embeddings
             if not self.vector_store_manager.initialize_embeddings(self.google_api_key):
-                logger.warning("Failed to initialize embeddings, using mock mode")
-                # Set a flag to indicate mock mode
-                self.mock_mode = True
-                return
+                raise RuntimeError("Failed to initialize embeddings. Please check your GOOGLE_API_KEY.")
             
             # Try to load existing vector store
             if not self.vector_store_manager.load_vector_store():
-                logger.warning("No existing vector store found. You may need to create one first.")
+                logger.warning("No existing vector store found. You may need to run the initialization script first.")
+                logger.warning("Run: python backend/rag_agent/scripts/initialize_vector_db.py")
                 
         except Exception as e:
             logger.error(f"Error initializing vector search tool: {e}")
+            raise RuntimeError(f"Failed to initialize vector search: {e}")
     
     def search(self, query: str, k: int = 3) -> str:
         """
@@ -69,11 +75,11 @@ class VectorSearchTool:
         Returns:
             str: Formatted search results
         """
-        if self.mock_mode:
-            return f"Mock vector search results for query: '{query}'\n\n1. Remote Work Policy Document\n   - Content: This is a mock document about remote work policies.\n   - Source: remote_work_policy.txt\n   - Relevance: 0.95\n\n2. Travel Policy Document\n   - Content: This is a mock document about travel policies.\n   - Source: travel_policy.txt\n   - Relevance: 0.87"
-        
         if not self.vector_store_manager or not self.vector_store_manager.vector_store:
-            return "Vector store not available. Please ensure the vector database is initialized."
+            raise RuntimeError(
+                "Vector store not available. Please ensure the vector database is initialized. "
+                "Run: python backend/rag_agent/scripts/initialize_vector_db.py"
+            )
         
         try:
             # Perform vector search
@@ -187,26 +193,47 @@ def vector_search_with_metadata(query: str, k: int = 3) -> Dict[str, Any]:
         }
 
 
-def get_vector_store_status() -> str:
+def get_vector_store_status() -> Dict[str, Any]:
     """
     Get the current status of the vector store.
     
     Returns:
-        str: Status information about the vector store
+        Dict: Status information about the vector store
     """
-    tool_instance = get_vector_search_tool()
-    info = tool_instance.get_store_info()
-    
-    if info.get("status") == "not_initialized":
-        return "Vector store is not initialized. Please run the initialization script first."
-    
-    if info.get("status") == "error":
-        return f"Vector store error: {info.get('error', 'Unknown error')}"
-    
-    return f"Vector store status: {info.get('status', 'unknown')}\n" \
-           f"Index type: {info.get('index_type', 'unknown')}\n" \
-           f"Embedding dimension: {info.get('embedding_dimension', 'unknown')}\n" \
-           f"Total vectors: {info.get('total_vectors', 'unknown')}"
+    try:
+        tool_instance = get_vector_search_tool()
+        info = tool_instance.get_store_info()
+        
+        if info.get("status") == "not_initialized":
+            return {
+                "status": "error",
+                "message": "Vector store is not initialized. Please run the initialization script first.",
+                "available": False
+            }
+        
+        if info.get("status") == "error":
+            return {
+                "status": "error",
+                "message": info.get('error', 'Unknown error'),
+                "available": False
+            }
+        
+        return {
+            "status": "ready",
+            "message": "Vector store is ready",
+            "available": True,
+            "details": {
+                "index_type": info.get('index_type', 'unknown'),
+                "embedding_dimension": info.get('embedding_dimension', 'unknown'),
+                "total_vectors": info.get('total_vectors', 'unknown')
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "available": False
+        }
 
 
 def initialize_vector_store(documents_path: str = "documents",

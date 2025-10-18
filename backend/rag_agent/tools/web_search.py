@@ -4,7 +4,7 @@ Web search tool using Tavily API for the RAG system.
 
 import os
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 from langchain_core.tools import tool
 from tavily import TavilyClient
 
@@ -24,23 +24,23 @@ class WebSearchTool:
         """
         self.api_key = api_key or os.getenv("TAVILY_API_KEY")
         self.client = None
-        self.mock_mode = False
         self._initialize()
     
     def _initialize(self):
         """Initialize the Tavily client."""
+        if not self.api_key:
+            raise ValueError(
+                "TAVILY_API_KEY environment variable is not set. "
+                "Please set a valid Tavily API key to use web search. "
+                "Get your API key from: https://tavily.com/"
+            )
+        
         try:
-            if not self.api_key or self.api_key == "mock-tavily-api-key":
-                logger.warning("TAVILY_API_KEY not found or is mock. Using mock mode.")
-                self.mock_mode = True
-                return
-            
             self.client = TavilyClient(api_key=self.api_key)
             logger.info("Web search tool initialized successfully")
-            
         except Exception as e:
             logger.error(f"Error initializing web search tool: {e}")
-            self.mock_mode = True
+            raise RuntimeError(f"Failed to initialize Tavily client: {e}")
     
     def search(self, query: str, max_results: int = 3, search_depth: str = "advanced") -> str:
         """
@@ -54,11 +54,8 @@ class WebSearchTool:
         Returns:
             str: Formatted search results
         """
-        if self.mock_mode:
-            return f"Mock web search results for query: '{query}'\n\n1. Example.com - {query} Information\n   - URL: https://example.com/{query.replace(' ', '-')}\n   - Content: This is a mock web search result for '{query}'.\n   - Relevance: High\n\n2. Wikipedia - {query}\n   - URL: https://en.wikipedia.org/wiki/{query.replace(' ', '_')}\n   - Content: Mock Wikipedia article about {query}.\n   - Relevance: Medium"
-        
         if not self.client:
-            return "Web search not available. Please check TAVILY_API_KEY configuration."
+            raise RuntimeError("Web search client is not initialized. Please check TAVILY_API_KEY configuration.")
         
         try:
             # Perform Tavily search
@@ -106,7 +103,7 @@ class WebSearchTool:
             str: Formatted news results
         """
         if not self.client:
-            return "Web search not available. Please check TAVILY_API_KEY configuration."
+            raise RuntimeError("Web search client is not initialized. Please check TAVILY_API_KEY configuration.")
         
         try:
             # Perform Tavily search with news focus
@@ -192,19 +189,34 @@ def web_search_news_tool(query: str, max_results: int = 3) -> str:
     return tool_instance.search_news(query, max_results)
 
 
-def get_web_search_status() -> str:
+def get_web_search_status() -> Dict[str, Any]:
     """
     Get the current status of the web search tool.
     
     Returns:
-        str: Status information about the web search tool
+        Dict: Status information about the web search tool
     """
-    tool_instance = get_web_search_tool()
-    
-    if not tool_instance.client:
-        return "Web search tool is not available. Please check TAVILY_API_KEY configuration."
-    
-    return "Web search tool is ready and configured."
+    try:
+        tool_instance = get_web_search_tool()
+        
+        if not tool_instance.client:
+            return {
+                "status": "error",
+                "message": "Web search tool is not initialized. Please check TAVILY_API_KEY configuration.",
+                "available": False
+            }
+        
+        return {
+            "status": "ready",
+            "message": "Web search tool is ready and configured.",
+            "available": True
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "available": False
+        }
 
 
 if __name__ == "__main__":
