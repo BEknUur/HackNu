@@ -22,7 +22,7 @@ class VectorSearchTool:
     """Vector search tool for the RAG system."""
     
     def __init__(self, 
-                 vector_store_path: str = "data/vector_store",
+                 vector_store_path: str = "rag_agent/data/vector_store",
                  embedding_model: str = "models/embedding-001",
                  google_api_key: Optional[str] = None):
         """
@@ -240,8 +240,8 @@ def get_vector_store_status() -> Dict[str, Any]:
         }
 
 
-def initialize_vector_store(documents_path: str = "documents",
-                           vector_store_path: str = "data/vector_store",
+def initialize_vector_store(documents_path: str = "rag_agent/documents",
+                           vector_store_path: str = "rag_agent/data/vector_store",
                            google_api_key: Optional[str] = None) -> bool:
     """
     Initialize the vector store from documents.

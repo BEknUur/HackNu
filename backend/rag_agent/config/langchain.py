@@ -98,7 +98,7 @@ class LangChainConfig(BaseModel):
     
     # Vector store configuration
     vector_store_type: str = "chroma"
-    vector_store_path: str = "data/vector_store"
+    vector_store_path: str = "rag_agent/data/vector_store"
     top_k_results: int = 3
     
     def get_llm(self, provider: Optional[str] = None) -> Any:
