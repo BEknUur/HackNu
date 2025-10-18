@@ -4,29 +4,31 @@ from typing import Optional
 
 
 class UserCreate(BaseModel):
-    name: str = Field(..., min_length=2, max_length=50)
-    surname: str = Field(..., min_length=2, max_length=50)
-    email: EmailStr
-    phone: str
-    password: str = Field(..., min_length=8)
-    avatar: str = Field(..., description="Path or URL to avatar file")
+    """Schema for creating a new user"""
+    name: str = Field(..., min_length=2, max_length=50, description="User's first name")
+    surname: str = Field(..., min_length=2, max_length=50, description="User's last name")
+    email: EmailStr = Field(..., description="User's email address")
+    phone: str = Field(..., description="User's phone number")
+    password: str = Field(..., min_length=8, max_length=72, description="User's password (8-72 characters)")
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    """Schema for user login"""
+    email: EmailStr = Field(..., description="User's email address")
+    password: str = Field(..., description="User's password")
 
 
 class UserRead(BaseModel):
+    """Schema for reading user data"""
     id: int
     name: str
     surname: str
-    email: EmailStr
+    email: str  
     phone: str
-    avatar: str = Field(..., description="Path or URL to avatar file")
+    avatar: Optional[str] = Field(None, description="Avatar filename (for Face ID)")
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

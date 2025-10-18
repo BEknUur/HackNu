@@ -4,11 +4,13 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 passlib[bcrypt]
+bcrypt==4.0.1
 pydantic
 email-validator
-bcrypt
+python-multipart
 deepface
 opencv-python
 tf-keras
+tensorflow>=2.0.0
 pillow
-python-multipart
+retina-face
