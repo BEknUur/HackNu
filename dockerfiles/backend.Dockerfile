@@ -15,6 +15,8 @@ COPY ../backend/requirements.txt ./
 
 RUN pip install -r requirements.txt
 
+ENV TF_ENABLE_ONEDNN_OPTS=0
+
 COPY ./backend/ .
 
 EXPOSE 8000
