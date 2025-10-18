@@ -2,8 +2,9 @@ import { StyleSheet, View, Text, TouchableOpacity, Alert, Modal, Image, Activity
 import { useState } from 'react';
 import FaceCamera from '@/components/face-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { config } from '@/lib/config';
 
-const API_URL = 'http://localhost:8000/api/faceid'; // Change this to your backend URL
+const API_URL = `${config.backendURL}${config.endpoints.faceid}`;
 
 interface VerificationResult {
   success: boolean;

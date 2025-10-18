@@ -1,6 +1,6 @@
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { LiveAPIProvider, useLiveAPIContext } from '../../contexts/LiveAPIContext';
+import { useLiveAPIWithRAG } from '../../hooks/use-live-api-with-rag';
 import Constants from 'expo-constants';
 import { AudioRecorder } from '../../lib/audio-recorder';
 import { useWebcam } from '../../hooks/use-webcam';
@@ -20,7 +20,8 @@ const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY || process.env.EXPO_
 type Language = 'ru' | 'en';
 
 function LiveChatContent() {
-  const { connected, connect, disconnect, client, volume, setConfig } = useLiveAPIContext();
+  const apiOptions = { apiKey: API_KEY || '' };
+  const { connected, connect, disconnect, client, volume, setConfig, ragToolsEnabled, ragToolsHealthy, setRAGToolsEnabled } = useLiveAPIWithRAG(apiOptions);
   const [messages, setMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'ai'}>>([]);
   const [isMicOn, setIsMicOn] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
@@ -34,8 +35,29 @@ function LiveChatContent() {
 
   // Language instructions
   const languageInstructions = {
-    ru: 'You are a helpful AI assistant. IMPORTANT: You MUST respond ONLY in RUSSIAN language. Always speak Russian, never use English in your responses. Use natural Russian speech patterns.',
-    en: 'You are a helpful AI assistant with multimodal capabilities. You can see through camera, view screen shares, and listen to audio. Respond naturally and helpfully in English.',
+    ru: `You are a helpful AI assistant with access to company knowledge and web search. IMPORTANT: You MUST respond ONLY in RUSSIAN language. Always speak Russian, never use English in your responses. Use natural Russian speech patterns.
+
+AVAILABLE TOOLS:
+- vector_search: Search company internal documents and policies
+- web_search: Search the web for current information
+
+When answering questions:
+1. Use vector_search for company-related questions
+2. Use web_search for current events or general information
+3. Combine results when needed
+4. Always cite your sources`,
+    en: `You are a helpful AI assistant with multimodal capabilities and access to specialized tools. You can see through camera, view screen shares, and listen to audio.
+
+AVAILABLE TOOLS:
+- vector_search: Search company internal documents, policies, and knowledge base
+- web_search: Search the web for current information, news, and public data
+
+INSTRUCTIONS:
+1. When user asks about company information, policies, or internal documents → Use vector_search
+2. When user asks about current events, news, or general knowledge → Use web_search
+3. When you need both internal and external information → Use both tools
+4. Always cite your sources and be specific about where information came from
+5. Respond naturally and helpfully in English`,
   };
 
   // UI translations
@@ -364,6 +386,15 @@ function LiveChatContent() {
         </View>
         
         <View style={styles.headerRight}>
+          {/* RAG Tools Indicator */}
+          {ragToolsEnabled && (
+            <View style={[styles.ragIndicator, ragToolsHealthy ? styles.ragIndicatorHealthy : styles.ragIndicatorError]}>
+              <Text style={styles.ragIndicatorText}>
+                {ragToolsHealthy ? '🧠 RAG' : '⚠️ RAG'}
+              </Text>
+            </View>
+          )}
+          
           {/* Language Switcher */}
           <View style={styles.languageSwitcher}>
             <TouchableOpacity 
@@ -501,12 +532,7 @@ function LiveChatContent() {
 }
 
 export default function LiveChatScreen() {
-  const apiOptions = { apiKey: API_KEY || '' };
-  return (
-    <LiveAPIProvider options={apiOptions}>
-      <LiveChatContent />
-    </LiveAPIProvider>
-  );
+  return <LiveChatContent />;
 }
 
 const styles = StyleSheet.create({
@@ -552,6 +578,23 @@ const styles = StyleSheet.create({
   },
   languageButtonTextActive: {
     color: '#fff',
+  },
+  ragIndicator: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#333',
+  },
+  ragIndicatorHealthy: {
+    backgroundColor: '#4CAF50',
+  },
+  ragIndicatorError: {
+    backgroundColor: '#f44336',
+  },
+  ragIndicatorText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   connectButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#333', borderRadius: 20 },
   connectButtonActive: { backgroundColor: '#f44336' },

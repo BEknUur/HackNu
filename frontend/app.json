@@ -8,6 +8,9 @@
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "extra": {
+      "BACKEND_URL": "http://46.101.175.118:8000"
+    },
     "ios": {
       "supportsTablet": true
     },
