@@ -6,23 +6,124 @@ import { AudioRecorder } from '../../lib/audio-recorder';
 import { useWebcam } from '../../hooks/use-webcam';
 import { useScreenCapture } from '../../hooks/use-screen-capture';
 
+// @ts-ignore - для web video элемента
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      video: any;
+    }
+  }
+}
+
 const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+type Language = 'ru' | 'en';
 
 function LiveChatContent() {
   const { connected, connect, disconnect, client, volume, setConfig } = useLiveAPIContext();
   const [messages, setMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'ai'}>>([]);
   const [isMicOn, setIsMicOn] = useState(false);
+  const [language, setLanguage] = useState<Language>('en');
   const audioRecorderRef = useRef<AudioRecorder | null>(null);
   const webcam = useWebcam();
   const screenCapture = useScreenCapture();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoIntervalRef = useRef<number | null>(null);
 
-  // Setup config for Gemini
+  // Language instructions
+  const languageInstructions = {
+    ru: 'You are a helpful AI assistant. IMPORTANT: You MUST respond ONLY in RUSSIAN language. Always speak Russian, never use English in your responses. Use natural Russian speech patterns.',
+    en: 'You are a helpful AI assistant with multimodal capabilities. You can see through camera, view screen shares, and listen to audio. Respond naturally and helpfully in English.',
+  };
+
+  // UI translations
+  const translations = {
+    ru: {
+      title: 'Gemini Live Чат',
+      subtitle: 'Мультимодальный AI Ассистент',
+      connect: 'Подключить',
+      live: 'В ЭФИРЕ',
+      greetingMessage: 'Привет! Я Gemini AI с мультимодальными возможностями. Включи микрофон, камеру или покажи свой экран чтобы начать! 🎤📹🖥️',
+      connected: 'Подключено к Gemini Live API! 🚀',
+      disconnected: 'Отключено от Gemini',
+      connectFirst: 'Сначала подключитесь к Gemini',
+      emptyStateText: 'Нажми "Подключить" чтобы начать',
+      emptyStateSubtext: 'После подключения используй кнопки ниже:',
+      emptyStateButtons: '🎤 Голос • 📹 Камера • 🖥️ Экран',
+      apiKeyMissing: '⚠️ API ключ не найден!',
+      micOn: '🎤 Микрофон включен - Говори!',
+      micOff: '🔇 Микрофон выключен',
+      cameraOn: '📹 Камера включена - AI видит тебя!',
+      cameraOff: '📷 Камера выключена',
+      screenOn: '🖥️ Показ экрана включен - AI видит твой экран!',
+      screenOff: '🖥️ Показ экрана остановлен',
+      microphone: 'Микрофон',
+      camera: 'Камера',
+      screen: 'Экран',
+      cameraPreview: '📹 Превью Камеры',
+      screenPreview: '🖥️ Превью Экрана',
+      volume: 'Громкость',
+    },
+    en: {
+      title: 'Gemini Live Chat',
+      subtitle: 'Multimodal AI Assistant',
+      connect: 'Connect',
+      live: 'LIVE',
+      greetingMessage: 'Hello! I\'m Gemini AI with multimodal capabilities. Turn on your microphone, camera, or share your screen to start! 🎤📹🖥️',
+      connected: 'Connected to Gemini Live API! 🚀',
+      disconnected: 'Disconnected from Gemini',
+      connectFirst: 'Please connect to Gemini first',
+      emptyStateText: 'Press "Connect" to start',
+      emptyStateSubtext: 'After connecting, use the buttons below:',
+      emptyStateButtons: '🎤 Voice • 📹 Camera • 🖥️ Screen Share',
+      apiKeyMissing: '⚠️ API key not found!',
+      micOn: '🎤 Microphone is ON - Speak now!',
+      micOff: '🔇 Microphone turned off',
+      cameraOn: '📹 Camera is ON - AI can see you!',
+      cameraOff: '📷 Camera turned off',
+      screenOn: '🖥️ Screen sharing is ON - AI can see your screen!',
+      screenOff: '🖥️ Screen sharing stopped',
+      microphone: 'Microphone',
+      camera: 'Camera',
+      screen: 'Screen',
+      cameraPreview: '📹 Camera Preview',
+      screenPreview: '🖥️ Screen Preview',
+      volume: 'Volume',
+    },
+  };
+
+  const t = translations[language];
+
+  // Setup config for Gemini with language
   useEffect(() => {
-    setConfig({});
-  }, [setConfig]);
+    const systemInstruction = languageInstructions[language];
+    console.log('Setting language to:', language, 'Instruction:', systemInstruction);
+    setConfig({
+      systemInstruction: {
+        parts: [{ text: systemInstruction }]
+      }
+    });
+  }, [setConfig, language]);
+
+  // Update preview video when stream changes
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const currentStream = webcam.stream || screenCapture.stream;
+      console.log('Stream changed:', currentStream ? 'Stream available' : 'No stream', 'Preview ref:', !!previewVideoRef.current);
+      
+      if (currentStream && previewVideoRef.current) {
+        console.log('Setting stream to preview video');
+        previewVideoRef.current.srcObject = currentStream;
+        previewVideoRef.current.play()
+          .then(() => console.log('Video playing!'))
+          .catch(err => console.log('Video play error:', err));
+      } else if (!currentStream && previewVideoRef.current) {
+        previewVideoRef.current.srcObject = null;
+      }
+    }
+  }, [webcam.stream, screenCapture.stream]);
 
   // Listen for AI responses
   useEffect(() => {
@@ -61,15 +162,15 @@ function LiveChatContent() {
         await disconnect();
         stopAllStreams();
         setMessages([]);
-        alert('Disconnected from Gemini');
+        alert(t.disconnected);
       } else {
         await connect();
         setMessages([{
           id: '1',
-          text: 'Hello! I\'m Gemini AI with multimodal capabilities. Turn on your microphone, camera, or share your screen to start! 🎤📹🖥️',
+          text: t.greetingMessage,
           sender: 'ai'
         }]);
-        alert('Connected to Gemini Live API! 🚀');
+        alert(t.connected);
       }
     } catch (error) {
       console.error('Connection error:', error);
@@ -97,7 +198,7 @@ function LiveChatContent() {
   // Toggle microphone
   const toggleMic = async () => {
     if (!connected) {
-      alert('Please connect to Gemini first');
+      alert(t.connectFirst);
       return;
     }
 
@@ -106,7 +207,7 @@ function LiveChatContent() {
       audioRecorderRef.current?.stop();
       audioRecorderRef.current = null;
       setIsMicOn(false);
-      alert('🔇 Microphone turned off');
+      alert(t.micOff);
     } else {
       // Start recording
       try {
@@ -124,7 +225,7 @@ function LiveChatContent() {
 
         await recorder.start();
         setIsMicOn(true);
-        alert('🎤 Microphone is ON - Speak now!');
+        alert(t.micOn);
       } catch (error) {
         console.error('Microphone error:', error);
         alert('Error: Could not access microphone');
@@ -181,12 +282,15 @@ function LiveChatContent() {
       videoRef.current.srcObject = null;
       videoRef.current = null;
     }
+    if (previewVideoRef.current) {
+      previewVideoRef.current.srcObject = null;
+    }
   };
 
   // Toggle webcam
   const toggleCamera = async () => {
     if (!connected) {
-      alert('Please connect to Gemini first');
+      alert(t.connectFirst);
       return;
     }
 
@@ -198,7 +302,7 @@ function LiveChatContent() {
     if (webcam.isStreaming) {
       stopVideoStream();
       webcam.stop();
-      alert('📷 Camera turned off');
+      alert(t.cameraOff);
     } else {
       try {
         // Stop screen share if active
@@ -209,7 +313,7 @@ function LiveChatContent() {
 
         const stream = await webcam.start();
         startVideoStream(stream);
-        alert('📹 Camera is ON - AI can see you!');
+        alert(t.cameraOn);
       } catch (error) {
         console.error('Camera error:', error);
         alert('Error: Could not access camera');
@@ -220,7 +324,7 @@ function LiveChatContent() {
   // Toggle screen share
   const toggleScreenShare = async () => {
     if (!connected) {
-      alert('Please connect to Gemini first');
+      alert(t.connectFirst);
       return;
     }
 
@@ -232,7 +336,7 @@ function LiveChatContent() {
     if (screenCapture.isStreaming) {
       stopVideoStream();
       screenCapture.stop();
-      alert('🖥️ Screen sharing stopped');
+      alert(t.screenOff);
     } else {
       try {
         // Stop webcam if active
@@ -243,7 +347,7 @@ function LiveChatContent() {
 
         const stream = await screenCapture.start();
         startVideoStream(stream);
-        alert('🖥️ Screen sharing is ON - AI can see your screen!');
+        alert(t.screenOn);
       } catch (error) {
         console.error('Screen share error:', error);
         alert('Error: Could not capture screen');
@@ -254,35 +358,91 @@ function LiveChatContent() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Gemini Live Chat</Text>
-          <Text style={styles.headerSubtitle}>Multimodal AI Assistant</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>{t.title}</Text>
+          <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
         </View>
-        <TouchableOpacity 
-          style={[styles.connectButton, connected && styles.connectButtonActive]}
-          onPress={handleConnect}
-        >
-          <Text style={styles.connectButtonText}>
-            {connected ? '● LIVE' : '○ Connect'}
-          </Text>
-        </TouchableOpacity>
+        
+        <View style={styles.headerRight}>
+          {/* Language Switcher */}
+          <View style={styles.languageSwitcher}>
+            <TouchableOpacity 
+              style={[styles.languageButton, language === 'en' && styles.languageButtonActive]}
+              onPress={() => setLanguage('en')}
+            >
+              <Text style={[styles.languageButtonText, language === 'en' && styles.languageButtonTextActive]}>
+                EN 🇺🇸
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.languageButton, language === 'ru' && styles.languageButtonActive]}
+              onPress={() => setLanguage('ru')}
+            >
+              <Text style={[styles.languageButtonText, language === 'ru' && styles.languageButtonTextActive]}>
+                RU 🇷🇺
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.connectButton, connected && styles.connectButtonActive]}
+            onPress={handleConnect}
+          >
+            <Text style={styles.connectButtonText}>
+              {connected ? `● ${t.live}` : `○ ${t.connect}`}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
       
       <ScrollView style={styles.messagesContainer}>
+        {/* Video Preview */}
+        {Platform.OS === 'web' && (webcam.isStreaming || screenCapture.isStreaming) && (
+          <View style={styles.videoPreviewContainer}>
+            <video
+              ref={(ref) => { 
+                previewVideoRef.current = ref;
+                console.log('Video ref set:', !!ref);
+              }}
+              autoPlay
+              playsInline
+              muted
+              onLoadedMetadata={(e) => {
+                console.log('Video metadata loaded', e.currentTarget.videoWidth, 'x', e.currentTarget.videoHeight);
+              }}
+              onPlay={() => console.log('Video started playing')}
+              onError={(e) => console.error('Video error:', e)}
+              style={{
+                width: '100%',
+                maxWidth: 800,
+                minHeight: 400,
+                borderRadius: 16,
+                backgroundColor: '#000',
+                transform: webcam.isStreaming ? 'scaleX(-1)' : 'scaleX(1)', // Зеркалим камеру
+              }}
+            />
+            <View style={styles.videoLabel}>
+              <Text style={styles.videoLabelText}>
+                {webcam.isStreaming ? t.cameraPreview : t.screenPreview}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {messages.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🤖</Text>
             <Text style={styles.emptyStateText}>
-              Press "Connect" to start
+              {t.emptyStateText}
             </Text>
             <Text style={styles.emptyStateSubtext}>
-              After connecting, use the buttons below:
+              {t.emptyStateSubtext}
             </Text>
             <Text style={styles.emptyStateSubtext}>
-              🎤 Voice • 📹 Camera • 🖥️ Screen Share
+              {t.emptyStateButtons}
             </Text>
             {!API_KEY && (
-              <Text style={styles.errorText}>⚠️ API key not found!</Text>
+              <Text style={styles.errorText}>{t.apiKeyMissing}</Text>
             )}
           </View>
         ) : (
@@ -300,10 +460,10 @@ function LiveChatContent() {
       {/* Active indicator */}
       {connected && (isMicOn || webcam.isStreaming || screenCapture.isStreaming) && (
         <View style={styles.activeIndicator}>
-          {isMicOn && <Text style={styles.activeText}>🎤 Microphone</Text>}
-          {webcam.isStreaming && <Text style={styles.activeText}>📹 Camera</Text>}
-          {screenCapture.isStreaming && <Text style={styles.activeText}>🖥️ Screen</Text>}
-          {isMicOn && <Text style={styles.volumeText}>Volume: {Math.round(volume * 100)}%</Text>}
+          {isMicOn && <Text style={styles.activeText}>🎤 {t.microphone}</Text>}
+          {webcam.isStreaming && <Text style={styles.activeText}>📹 {t.camera}</Text>}
+          {screenCapture.isStreaming && <Text style={styles.activeText}>🖥️ {t.screen}</Text>}
+          {isMicOn && <Text style={styles.volumeText}>{t.volume}: {Math.round(volume * 100)}%</Text>}
         </View>
       )}
 
@@ -315,7 +475,7 @@ function LiveChatContent() {
           onPress={toggleMic}
         >
           <Text style={styles.controlButtonIcon}>{isMicOn ? '🎤' : '🔇'}</Text>
-          <Text style={styles.controlButtonText}>Microphone</Text>
+          <Text style={styles.controlButtonText}>{t.microphone}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -324,7 +484,7 @@ function LiveChatContent() {
           onPress={toggleCamera}
         >
           <Text style={styles.controlButtonIcon}>{webcam.isStreaming ? '📹' : '📷'}</Text>
-          <Text style={styles.controlButtonText}>Camera</Text>
+          <Text style={styles.controlButtonText}>{t.camera}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -333,7 +493,7 @@ function LiveChatContent() {
           onPress={toggleScreenShare}
         >
           <Text style={styles.controlButtonIcon}>🖥️</Text>
-          <Text style={styles.controlButtonText}>Screen</Text>
+          <Text style={styles.controlButtonText}>{t.screen}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -360,12 +520,65 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, 
     borderBottomColor: '#333' 
   },
+  headerLeft: {
+    flexDirection: 'column',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   headerSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
+  languageSwitcher: {
+    flexDirection: 'row',
+    backgroundColor: '#333',
+    borderRadius: 20,
+    padding: 4,
+    gap: 4,
+  },
+  languageButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  languageButtonActive: {
+    backgroundColor: '#4CAF50',
+  },
+  languageButtonText: {
+    color: '#888',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  languageButtonTextActive: {
+    color: '#fff',
+  },
   connectButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#333', borderRadius: 20 },
   connectButtonActive: { backgroundColor: '#f44336' },
   connectButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   messagesContainer: { flex: 1, padding: 16 },
+  videoPreviewContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  videoLabel: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+  },
+  videoLabelText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
   emptyIcon: { fontSize: 64, marginBottom: 16 },
   emptyStateText: { fontSize: 18, color: '#fff', textAlign: 'center', marginBottom: 8, fontWeight: '600' },
