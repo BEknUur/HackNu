@@ -19,4 +19,4 @@ class Account(Base):
     
     # Relationships
     user = relationship("User", back_populates="accounts")
-    transactions = relationship("Transaction", back_populates="account")
+    transactions = relationship("Transaction", back_populates="account", foreign_keys="Transaction.account_id")

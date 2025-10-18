@@ -27,8 +27,8 @@ class Transaction(Base):
     deleted_at = Column(DateTime, nullable=True)
     
     # Relationships
-    user = relationship("User", back_populates="transactions")
-    account = relationship("Account", back_populates="transactions")
+    user = relationship("User", foreign_keys=[user_id], back_populates="transactions")
+    account = relationship("Account", foreign_keys=[account_id], back_populates="transactions")
     to_user = relationship("User", foreign_keys=[to_user_id])
     to_account = relationship("Account", foreign_keys=[to_account_id])
     product = relationship("Product", back_populates="transactions")

@@ -9,7 +9,7 @@ class UserCreate(BaseModel):
     surname: str = Field(..., min_length=2, max_length=50, description="User's last name")
     email: EmailStr = Field(..., description="User's email address")
     phone: str = Field(..., description="User's phone number")
-    password: str = Field(..., min_length=8, description="User's password (min 8 characters)")
+    password: str = Field(..., min_length=8, max_length=72, description="User's password (8-72 characters)")
 
 
 class UserLogin(BaseModel):
