@@ -22,3 +22,4 @@ class User(Base):
     accounts = relationship("Account", back_populates="user")
     transactions = relationship("Transaction", back_populates="user", foreign_keys="Transaction.user_id")
     carts = relationship("Cart", back_populates="user")
+    financial_goals = relationship("FinancialGoal", back_populates="user")
