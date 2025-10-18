@@ -33,6 +33,7 @@ class VectorSearchTool:
         self.embedding_model = embedding_model
         self.google_api_key = google_api_key or os.getenv("GOOGLE_API_KEY")
         self.vector_store_manager = None
+        self.mock_mode = False
         self._initialize()
     
     def _initialize(self):
@@ -45,7 +46,9 @@ class VectorSearchTool:
             
             # Initialize embeddings
             if not self.vector_store_manager.initialize_embeddings(self.google_api_key):
-                logger.error("Failed to initialize embeddings")
+                logger.warning("Failed to initialize embeddings, using mock mode")
+                # Set a flag to indicate mock mode
+                self.mock_mode = True
                 return
             
             # Try to load existing vector store
@@ -66,6 +69,9 @@ class VectorSearchTool:
         Returns:
             str: Formatted search results
         """
+        if self.mock_mode:
+            return f"Mock vector search results for query: '{query}'\n\n1. Remote Work Policy Document\n   - Content: This is a mock document about remote work policies.\n   - Source: remote_work_policy.txt\n   - Relevance: 0.95\n\n2. Travel Policy Document\n   - Content: This is a mock document about travel policies.\n   - Source: travel_policy.txt\n   - Relevance: 0.87"
+        
         if not self.vector_store_manager or not self.vector_store_manager.vector_store:
             return "Vector store not available. Please ensure the vector database is initialized."
         

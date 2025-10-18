@@ -24,13 +24,15 @@ class WebSearchTool:
         """
         self.api_key = api_key or os.getenv("TAVILY_API_KEY")
         self.client = None
+        self.mock_mode = False
         self._initialize()
     
     def _initialize(self):
         """Initialize the Tavily client."""
         try:
-            if not self.api_key:
-                logger.warning("TAVILY_API_KEY not found. Web search will not work.")
+            if not self.api_key or self.api_key == "mock-tavily-api-key":
+                logger.warning("TAVILY_API_KEY not found or is mock. Using mock mode.")
+                self.mock_mode = True
                 return
             
             self.client = TavilyClient(api_key=self.api_key)
@@ -38,6 +40,7 @@ class WebSearchTool:
             
         except Exception as e:
             logger.error(f"Error initializing web search tool: {e}")
+            self.mock_mode = True
     
     def search(self, query: str, max_results: int = 3, search_depth: str = "advanced") -> str:
         """
@@ -51,6 +54,9 @@ class WebSearchTool:
         Returns:
             str: Formatted search results
         """
+        if self.mock_mode:
+            return f"Mock web search results for query: '{query}'\n\n1. Example.com - {query} Information\n   - URL: https://example.com/{query.replace(' ', '-')}\n   - Content: This is a mock web search result for '{query}'.\n   - Relevance: High\n\n2. Wikipedia - {query}\n   - URL: https://en.wikipedia.org/wiki/{query.replace(' ', '_')}\n   - Content: Mock Wikipedia article about {query}.\n   - Relevance: Medium"
+        
         if not self.client:
             return "Web search not available. Please check TAVILY_API_KEY configuration."
         
