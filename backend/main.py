@@ -8,6 +8,7 @@ from services.product.router import router as product_router
 from services.cart.router import router as cart_router
 from faceid.router import router as faceid_router
 from rag_agent.routes.router import router as rag_router
+from rag_agent.routes.live_tools_router import router as rag_live_router
 from database import Base, engine
 
 
@@ -40,6 +41,7 @@ app.include_router(product_router, prefix="/api")
 app.include_router(cart_router, prefix="/api")
 app.include_router(faceid_router, prefix="/api/faceid", tags=["Face Verification"])
 app.include_router(rag_router, tags=["RAG"])
+app.include_router(rag_live_router, tags=["RAG Live"])
 
 @app.on_event("startup")
 def startup_event():
