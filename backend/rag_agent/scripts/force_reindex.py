@@ -46,13 +46,13 @@ def force_reindex():
     # Create new vector store with BETTER chunking
     print(f"\n🔄 Creating new vector store with optimized chunking...")
     
-    # Use smaller chunks to ensure EQUIPMENT section is captured
+    # Use MUCH smaller chunks to ensure EQUIPMENT section is captured
     manager = VectorStoreManager(
         documents_path=documents_path,
         vector_store_path=vector_store_path,
         embedding_model=langchain_config.embedding_model,
-        chunk_size=500,  # Smaller chunks!
-        chunk_overlap=100  # More overlap!
+        chunk_size=300,  # MUCH smaller chunks!
+        chunk_overlap=50  # Less overlap for cleaner chunks!
     )
     
     # Initialize embeddings
