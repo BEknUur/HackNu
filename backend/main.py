@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
 from services.auth.router import router as auth_router
+from services.account.router import router as account_router
 from faceid.router import router as faceid_router
 from database import Base, engine
 
@@ -29,6 +30,7 @@ async def health():
 
 app.include_router(router)
 app.include_router(auth_router, prefix="/api/auth")
+app.include_router(account_router, prefix="/api")
 app.include_router(faceid_router, prefix="/api/faceid", tags=["Face Verification"])
 
 @app.on_event("startup")
