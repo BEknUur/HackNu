@@ -230,11 +230,11 @@ class LangGraphConfig(BaseModel):
     # Graph configuration
     graph: GraphConfig = Field(default_factory=GraphConfig)
     
-    # Tool registry
-    tool_registry: ToolRegistry = Field(default_factory=ToolRegistry)
+    # Tool registry - using Any to avoid Pydantic schema issues
+    tool_registry: Any = Field(default_factory=ToolRegistry)
     
-    # Agent factory
-    agent_factory: Optional[AgentFactory] = None
+    # Agent factory - using Any to avoid Pydantic schema issues
+    agent_factory: Optional[Any] = None
     
     model_config = {"arbitrary_types_allowed": True}
     
