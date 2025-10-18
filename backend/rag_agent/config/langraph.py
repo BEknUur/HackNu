@@ -171,10 +171,11 @@ class AgentFactory:
         tools = self.tool_registry.get_tools(config.tools)
         
         # Create a real LangGraph ReAct agent
+        # Use messages_modifier instead of state_modifier (correct parameter name in LangGraph)
         return create_react_agent(
             model=llm,
             tools=tools,
-            state_modifier=config.system_prompt
+            messages_modifier=config.system_prompt
         )
 
 

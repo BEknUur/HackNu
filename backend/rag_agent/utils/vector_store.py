@@ -269,10 +269,18 @@ class VectorStoreManager:
             return {"status": "not_initialized"}
         
         try:
+            # Get embedding dimension
+            embedding_dim = "unknown"
+            try:
+                test_embedding = self.embeddings.embed_query("test")
+                embedding_dim = len(test_embedding)
+            except Exception:
+                pass
+            
             return {
                 "status": "initialized",
                 "index_type": type(self.vector_store).__name__,
-                "embedding_dimension": self.vector_store.embedding_function.embed_query("test").shape[0],
+                "embedding_dimension": embedding_dim,
                 "total_vectors": self.vector_store.index.ntotal if hasattr(self.vector_store, 'index') else "unknown"
             }
         except Exception as e:
