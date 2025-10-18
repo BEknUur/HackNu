@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from geminilive import router as gemini_router
+from fastapi.routing import APIRouter
+
 
 app = FastAPI(
-    title="HackNU API - Gemini Live",
+    title="Zamanbank API",
     version="1.0.0",
-    description="Real-time audio streaming with Gemini Live API"
+    description="Zamanbank API"
 )
 
 # Configure CORS
@@ -17,14 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    return {
-        "message": "HackNU - Gemini Live API",
-        "docs": "/docs",
-        "health": "/api/gemini-live/health"
-    }
 
-# Include Gemini Live API routes
-app.include_router(gemini_router)
+router = APIRouter()
+router.prefix = "/api"
 
+@router.get("/health", tags=["system"])
+async def health():
+    return {"health": "ok"}
+
+app.include_router(router)
