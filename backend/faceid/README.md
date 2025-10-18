@@ -1,127 +1,184 @@
-# Face Recognition System
+# Face Verification System
 
-Система распознавания лиц с проверкой живости для безопасной биометрической аутентификации.
+This module implements real-time face verification using DeepFace library.
 
-## Возможности
+## Features
 
-- 🔍 **Распознавание лиц** - Детекция и извлечение эмбеддингов с помощью InsightFace
-- 🛡️ **Проверка живости** - Защита от спуфинг-атак (фото/видео)
-- 💾 **База данных** - Хранение эмбеддингов лиц в SQLite/PostgreSQL
-- 🌐 **REST API** - Полноценный API для регистрации и верификации
-- 📱 **Веб-интерфейс** - Простой интерфейс для тестирования
+- ✅ **Real-time Camera Capture**: Users can verify their identity using their device camera
+- ✅ **Multiple Face Matching**: Compares captured face against all registered faces in the database
+- ✅ **High Accuracy**: Uses VGG-Face model with cosine similarity metric
+- ✅ **Beautiful UI**: Modern React Native interface with camera preview and face guide
+- ✅ **Detailed Results**: Shows confidence score, matched person, and verification status
 
-## Быстрый старт
+## How It Works
 
-### 1. Установка зависимостей
+1. **Backend**: Loops through all images in `backend/faceid/images/` folder
+2. **Frontend**: User captures their face in real-time using device camera
+3. **Verification**: DeepFace compares the captured image with all registered faces
+4. **Result**: Returns the best match with confidence score
 
+## Setup
+
+### Backend Setup
+
+1. Install dependencies:
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 2. Запуск сервера
+2. Add face images to register:
+   - Place face images in `backend/faceid/images/` folder
+   - Supported formats: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.gif`
+   - Name the files with person's name (e.g., `john_doe.jpg`, `jane_smith.jpg`)
+   - **Important**: Use clear, well-lit photos with visible faces
 
+3. Run the backend:
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 3. Тестирование
+### Frontend Setup
 
-Откройте http://localhost:8000 в браузере для веб-интерфейса.
-
-Или запустите тестовый скрипт:
-
+1. Install dependencies:
 ```bash
-python test_face_recognition.py
+cd frontend
+npm install
+```
+
+2. Update API URL in `frontend/app/(tabs)/face-verify.tsx`:
+```typescript
+const API_URL = 'http://YOUR_BACKEND_IP:8000/api/faceid';
+```
+
+3. Run the app:
+```bash
+npx expo start
 ```
 
 ## API Endpoints
 
-### Основные
+### POST `/api/faceid/verify`
+Verify a face against all registered faces.
 
-- `GET /api/faceid/health` - Проверка состояния системы
-- `POST /api/faceid/enroll` - Регистрация нового человека
-- `POST /api/faceid/verify` - Верификация лица
-- `POST /api/faceid/verify-multi-frame` - Многокадровая верификация
-- `GET /api/faceid/persons` - Список зарегистрированных людей
+**Request:**
+- Method: `POST`
+- Content-Type: `multipart/form-data`
+- Body: `file` (image file)
 
-### Тестовые
-
-- `GET /api/faceid/test-image` - Получить тестовое изображение
-- `POST /api/faceid/enroll-test-image` - Зарегистрировать тестовое изображение
-- `GET /api/faceid/test-verification` - Тестовая верификация
-
-## Использование
-
-### Регистрация человека
-
-```bash
-curl -X POST "http://localhost:8000/api/faceid/enroll" \
-  -F "id_person=john_doe" \
-  -F "name=John Doe" \
-  -F "images=@photo1.jpg" \
-  -F "images=@photo2.jpg"
-```
-
-### Верификация лица
-
-```bash
-curl -X POST "http://localhost:8000/api/faceid/verify" \
-  -F "image=@test_photo.jpg" \
-  -F "check_liveness=true"
-```
-
-## Конфигурация
-
-Основные настройки в `config.py`:
-
-- `THRESHOLD_HIGH_CONFIDENCE = 0.55` - Порог высокой уверенности
-- `THRESHOLD_MEDIUM_CONFIDENCE = 0.45` - Порог средней уверенности
-- `DETECTION_MODEL = "buffalo_l"` - Модель детекции InsightFace
-- `EMBEDDING_SIZE = 512` - Размерность эмбеддинга
-
-## Структура ответа
-
+**Response:**
 ```json
 {
-  "verdict": "match|possible_match|not_found|spoof|no_face_detected",
-  "id_candidate": "person_id",
-  "name_candidate": "Person Name",
-  "similarity": 0.85,
-  "threshold_used": 0.55,
-  "explain": "Научное объяснение решения",
-  "evidence": {
-    "probe_face_box": [x, y, w, h],
-    "probe_embedding_norm": 1.0,
-    "candidate_stats": {...},
-    "liveness": "live|spoof|unknown"
-  },
-  "diagnostics": {
-    "detector_confidence": 0.95,
-    "lighting_score": 0.8,
-    "motion_blur_score": 0.2
-  },
-  "timestamp": "2024-01-01T12:00:00Z"
+  "success": true,
+  "message": "Verification completed successfully",
+  "result": {
+    "verified": true,
+    "confidence": 0.8523,
+    "matched_person": "john_doe",
+    "distance": 0.2341,
+    "threshold": 0.4,
+    "model": "VGG-Face",
+    "detector_backend": "opencv",
+    "similarity_metric": "cosine"
+  }
 }
 ```
 
-## Безопасность
+### GET `/api/faceid/registered-count`
+Get the number of registered faces.
 
-- ✅ Эмбеддинги нормализованы L2
-- ✅ Проверка живости для предотвращения спуфинга
-- ✅ Логирование попыток верификации
-- ✅ Валидация размера и формата изображений
-- ⚠️ Настройте шифрование эмбеддингов для продакшена
+**Response:**
+```json
+{
+  "success": true,
+  "count": 5,
+  "message": "Found 5 registered face(s)"
+}
+```
 
-## Требования
+### GET `/api/faceid/health`
+Health check for the face verification service.
 
-- Python 3.8+
-- InsightFace
-- OpenCV
-- FastAPI
-- SQLAlchemy
-- NumPy
+**Response:**
+```json
+{
+  "status": "healthy",
+  "service": "Face Verification",
+  "model": "VGG-Face",
+  "detector": "opencv",
+  "metric": "cosine"
+}
+```
 
-## Лицензия
+## Configuration
 
-MIT License
+You can customize the face recognition model in `backend/faceid/service.py`:
+
+```python
+face_service = FaceVerificationService(
+    model_name="VGG-Face",        # Options: VGG-Face, Facenet, OpenFace, DeepFace, DeepID, ArcFace, Dlib, SFace
+    detector_backend="opencv",     # Options: opencv, ssd, dlib, mtcnn, retinaface, mediapipe
+    distance_metric="cosine"       # Options: cosine, euclidean, euclidean_l2
+)
+```
+
+## Tips for Best Results
+
+1. **Image Quality**:
+   - Use high-resolution images (minimum 640x480)
+   - Ensure good lighting conditions
+   - Face should be clearly visible and centered
+
+2. **Registration**:
+   - Use frontal face images for registration
+   - Avoid sunglasses, masks, or heavy makeup
+   - One face per image
+
+3. **Verification**:
+   - Position face within the oval guide
+   - Ensure good lighting
+   - Look directly at the camera
+   - Remove accessories if possible
+
+## Troubleshooting
+
+### "No face detected" error
+- Ensure the image has a clear, visible face
+- Try different lighting conditions
+- Check if the face detector backend is working
+
+### Low confidence scores
+- Improve image quality
+- Use better lighting
+- Ensure face is centered and frontal
+- Consider using a different model (e.g., Facenet512)
+
+### Connection error on mobile
+- Make sure backend is accessible from mobile device
+- Update API_URL with correct IP address
+- Check if firewall is blocking connections
+- Use `http://` not `https://` for local development
+
+## Models Performance
+
+| Model | Speed | Accuracy | Size |
+|-------|-------|----------|------|
+| VGG-Face | Medium | High | Large |
+| Facenet | Fast | High | Medium |
+| OpenFace | Very Fast | Medium | Small |
+| ArcFace | Medium | Very High | Large |
+| DeepFace | Slow | High | Large |
+
+## Security Notes
+
+- Face embeddings are not stored, only compared in real-time
+- Images are temporarily stored during verification and deleted immediately
+- Use HTTPS in production
+- Implement rate limiting to prevent abuse
+- Add authentication to protect API endpoints
+
+## References
+
+- [DeepFace GitHub](https://github.com/serengil/deepface)
+- [DeepFace Documentation](https://github.com/serengil/deepface#readme)
+

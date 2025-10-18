@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Auth - Распознавание лиц</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .video-container {
+            position: relative;
+            margin: 30px 0;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #000;
+            display: none;
+        }
+        
+        .video-container.active {
+            display: block;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            margin: 10px;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn.stop {
+            background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 1.3em;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result.not-found {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .name {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        
+        .confidence {
+            font-size: 1.1em;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+        
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Face Auth</h1>
+        <p style="color: #666; margin-bottom: 30px;">Распознавание и авторизация по лицу</p>
+        
+        <button class="btn" id="startBtn" onclick="startCamera()">
+            📹 Включить камеру
+        </button>
+        
+        <button class="btn stop" id="stopBtn" onclick="stopCamera()" style="display: none;">
+            ⏹️ Остановить
+        </button>
+        
+        <div class="video-container" id="videoContainer">
+            <video id="video" autoplay muted playsinline></video>
+            <div class="overlay" id="overlay">Загрузка...</div>
+        </div>
+        
+        <canvas id="canvas"></canvas>
+        
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/faceid';
+        
+        let stream = null;
+        let recognitionInterval = null;
+        let isRecognizing = false;
+        
+        async function startCamera() {
+            try {
+                // Запрашиваем доступ к камере
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    }
+                });
+                
+                const video = document.getElementById('video');
+                const videoContainer = document.getElementById('videoContainer');
+                const overlay = document.getElementById('overlay');
+                const startBtn = document.getElementById('startBtn');
+                const stopBtn = document.getElementById('stopBtn');
+                
+                video.srcObject = stream;
+                videoContainer.classList.add('active');
+                overlay.textContent = 'Ищу лицо...';
+                
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                
+                // Ждем загрузки видео
+                await new Promise(resolve => {
+                    video.onloadedmetadata = resolve;
+                });
+                
+                // Начинаем распознавание каждые 2 секунды
+                recognitionInterval = setInterval(recognizeFace, 2000);
+                
+                // Первое распознавание через 1 секунду
+                setTimeout(recognizeFace, 1000);
+                
+            } catch (error) {
+                console.error('Ошибка доступа к камере:', error);
+                showResult('error', '❌ Не удалось получить доступ к камере', 'Разрешите доступ к камере в настройках браузера');
+            }
+        }
+        
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            if (recognitionInterval) {
+                clearInterval(recognitionInterval);
+                recognitionInterval = null;
+            }
+            
+            const video = document.getElementById('video');
+            const videoContainer = document.getElementById('videoContainer');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            video.srcObject = null;
+            videoContainer.classList.remove('active');
+            
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            
+            hideResult();
+        }
+        
+        async function recognizeFace() {
+            if (isRecognizing) return;
+            isRecognizing = true;
+            
+            try {
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const overlay = document.getElementById('overlay');
+                
+                // Устанавливаем размер canvas
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Рисуем текущий кадр
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                // Конвертируем в blob
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/jpeg', 0.95);
+                });
+                
+                overlay.textContent = 'Распознаю...';
+                
+                // Отправляем на сервер
+                const formData = new FormData();
+                formData.append('image', blob, 'frame.jpg');
+                formData.append('check_liveness', 'true');
+                
+                const response = await fetch(`${API_BASE}/verify`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                // Показываем результат
+                if (result.verdict === 'match') {
+                    overlay.textContent = `✅ ${result.name_candidate}`;
+                    showResult(
+                        'success',
+                        `✅ Добро пожаловать!`,
+                        `<div class="name">${result.name_candidate}</div>
+                         <div class="confidence">Уверенность: ${(result.similarity * 100).toFixed(1)}%</div>`
+                    );
+                    // Можно добавить редирект или другое действие
+                    // setTimeout(() => window.location.href = '/dashboard', 2000);
+                } else if (result.verdict === 'not_found') {
+                    overlay.textContent = '❌ Не найден';
+                    showResult(
+                        'not-found',
+                        '❌ Человек не найден в базе',
+                        'Этот человек не зарегистрирован в системе'
+                    );
+                } else if (result.verdict === 'no_face_detected') {
+                    overlay.textContent = '🔍 Ищу лицо...';
+                    hideResult();
+                } else if (result.verdict === 'spoof') {
+                    overlay.textContent = '🚫 Подделка!';
+                    showResult(
+                        'error',
+                        '🚫 Обнаружена подделка',
+                        'Это фото или видео, а не живой человек'
+                    );
+                }
+                
+            } catch (error) {
+                console.error('Ошибка распознавания:', error);
+                document.getElementById('overlay').textContent = '⚠️ Ошибка';
+            } finally {
+                isRecognizing = false;
+            }
+        }
+        
+        function showResult(type, title, message) {
+            const result = document.getElementById('result');
+            result.className = `result ${type} show`;
+            result.innerHTML = `
+                <div style="font-size: 1.5em; margin-bottom: 10px;">${title}</div>
+                <div>${message}</div>
+            `;
+        }
+        
+        function hideResult() {
+            document.getElementById('result').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
