@@ -19,6 +19,7 @@ if str(backend_dir) not in sys.path:
 
 from rag_agent.tools.vector_search import vector_search_tool
 from rag_agent.tools.web_search import web_search_tool
+from rag_agent.config.orchestrator import rag_system
 
 logger = logging.getLogger(__name__)
 
@@ -106,31 +107,82 @@ def get_function_declarations():
 
 
 # ============================================================================
-# TOOL EXECUTION
+# TOOL EXECUTION VIA SUPERVISOR AGENT
 # ============================================================================
 
-def execute_vector_search(query: str, top_k: int = 3) -> str:
-    """Execute vector search tool."""
+def execute_via_supervisor(user_query: str, tool_hint: Optional[str] = None) -> str:
+    """
+    Execute query through the supervisor agent.
+    
+    The supervisor will:
+    1. Analyze the query
+    2. Decide which specialist agent(s) to use
+    3. Call the appropriate agents with tools
+    4. Synthesize the results
+    
+    Args:
+        user_query: The user's query
+        tool_hint: Optional hint about which tool to prefer
+        
+    Returns:
+        str: The supervisor's response with tool results
+    """
     try:
-        logger.info(f"Executing vector_search: query='{query}', top_k={top_k}")
-        result = vector_search_tool.invoke({"query": query, "top_k": top_k})
-        logger.info(f"Vector search completed successfully")
-        return result
+        # Initialize the RAG system if not already done
+        if not rag_system.supervisor_agent:
+            logger.info("Initializing RAG system...")
+            rag_system.initialize(environment="production")
+            logger.info("RAG system initialized successfully")
+        
+        logger.info(f"🧠 Routing query to SUPERVISOR AGENT: '{user_query}'")
+        if tool_hint:
+            logger.info(f"   Tool hint: {tool_hint}")
+        
+        # Query through the supervisor agent
+        result = rag_system.query(
+            user_query=user_query,
+            context={"tool_hint": tool_hint} if tool_hint else {}
+        )
+        
+        logger.info(f"✅ Supervisor agent completed successfully")
+        logger.info(f"   Response length: {len(result['response'])} chars")
+        logger.info(f"   Sources used: {len(result.get('sources', []))}")
+        
+        return result['response']
+        
     except Exception as e:
-        logger.error(f"Vector search error: {e}")
+        logger.error(f"❌ Supervisor agent error: {e}", exc_info=True)
         raise
+
+
+def execute_vector_search(query: str, top_k: int = 3) -> str:
+    """
+    Execute vector search via supervisor agent.
+    
+    Instead of directly calling the tool, this routes through the supervisor
+    which will delegate to the local_knowledge_agent.
+    """
+    logger.info(f"📥 Vector search request received")
+    logger.info(f"   Query: '{query}', top_k={top_k}")
+    
+    # Create a query that hints at using vector search
+    user_query = f"Search the company knowledge base for: {query}"
+    return execute_via_supervisor(user_query, tool_hint="vector_search")
 
 
 def execute_web_search(query: str, max_results: int = 5) -> str:
-    """Execute web search tool."""
-    try:
-        logger.info(f"Executing web_search: query='{query}', max_results={max_results}")
-        result = web_search_tool.invoke({"query": query, "max_results": max_results})
-        logger.info(f"Web search completed successfully")
-        return result
-    except Exception as e:
-        logger.error(f"Web search error: {e}")
-        raise
+    """
+    Execute web search via supervisor agent.
+    
+    Instead of directly calling the tool, this routes through the supervisor
+    which will delegate to the web_search_agent.
+    """
+    logger.info(f"🌐 Web search request received")
+    logger.info(f"   Query: '{query}', max_results={max_results}")
+    
+    # Create a query that hints at using web search
+    user_query = f"Search the web for current information about: {query}"
+    return execute_via_supervisor(user_query, tool_hint="web_search")
 
 
 TOOL_EXECUTORS = {
