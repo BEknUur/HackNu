@@ -170,11 +170,12 @@ class AgentFactory:
         tools = self.tool_registry.get_tools(config.tools)
         
         # Create a real LangGraph ReAct agent
-        # Use state_modifier to inject system prompt
+        # Use the correct signature: model, tools, prompt, name
         return create_react_agent(
-            model=llm,
+            llm,
             tools=tools,
-            state_modifier=config.system_prompt
+            prompt=config.system_prompt,
+            name=config.name
         )
 
 
