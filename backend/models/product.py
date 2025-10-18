@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Decimal
+from sqlalchemy import Column, Integer, String, DateTime, Numeric
 from database import Base
 from sqlalchemy.orm import relationship
 
@@ -9,7 +9,7 @@ class Product(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
     description = Column(String)
-    price = Column(Decimal(15, 2), nullable=False)
+    price = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), default='USD')  # 'USD', 'EUR', 'KZT'
     category = Column(String, nullable=True)  # 'banking', 'insurance', 'investment'
     is_active = Column(String, default='active')  # 'active', 'inactive'

@@ -1,21 +1,36 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
+
+
+class UserMatchInfo(BaseModel):
+    """Information about matched user"""
+    user_id: int
+    name: str
+    surname: str
+    email: str
+    phone: str
+    avatar: str
+    created_at: datetime
+
+
+class FaceVerificationResult(BaseModel):
+    """Result of face verification"""
+    success: bool
+    verified: bool
+    message: str
+    user: Optional[UserMatchInfo] = None
+    confidence: Optional[float] = None
+    distance: Optional[float] = None
+    threshold: Optional[float] = None
+    model: Optional[str] = None
+    error: Optional[str] = None
 
 
 class VerificationResponse(BaseModel):
-    verified: bool
-    confidence: float
-    matched_person: Optional[str] = None
-    distance: Optional[float] = None
-    threshold: float
-    model: str
-    detector_backend: str
-    similarity_metric: str
-
-
-class VerificationResult(BaseModel):
+    """API response wrapper"""
     success: bool
     message: str
-    result: Optional[VerificationResponse] = None
+    data: Optional[dict] = None
     error: Optional[str] = None
 

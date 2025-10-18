@@ -1,111 +1,103 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
-from .service import FaceVerificationService
-from .schemas import VerificationResult
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from database import get_db
+from .service import FaceIDService
+from .schemas import FaceVerificationResult
 
 
 router = APIRouter()
 
-face_service = FaceVerificationService(
-    model_name="VGG-Face",
-    detector_backend="opencv",
-    distance_metric="cosine"
+# Initialize Face ID Service with optimal settings
+face_service = FaceIDService(
+    model_name="Facenet512",  # High accuracy model
+    detector_backend="retinaface",  # Best detector for face detection
+    distance_metric="cosine"  # Standard metric for face similarity
 )
 
 
-@router.post("/verify", response_model=VerificationResult)
-async def verify_face(file: UploadFile = File(...)):
+@router.post("/verify", response_model=FaceVerificationResult)
+async def verify_face(
+    file: UploadFile = File(..., description="Image file to verify (from camera or upload)"),
+    db: Session = Depends(get_db)
+):
     """
-    Verify uploaded face against all registered faces in the database
+    Verify uploaded face against all registered users' avatars.
+    
+    This is the main endpoint for face ID verification. It compares the uploaded
+    image against all registered user avatars and returns the matched user if found.
     
     Args:
-        file: Uploaded image file (from camera or file upload)
+        file: Uploaded image file containing a face
+        db: Database session
         
     Returns:
-        VerificationResult with match information
+        FaceVerificationResult with match information and user details
+        
+    Example response on success:
+        {
+            "success": true,
+            "verified": true,
+            "message": "Face verified successfully! Welcome, John Doe",
+            "user": {
+                "user_id": 1,
+                "name": "John",
+                "surname": "Doe",
+                "email": "john@example.com",
+                "phone": "+1234567890",
+                "avatar": "user_1_avatar.jpg",
+                "created_at": "2025-01-01T00:00:00"
+            },
+            "confidence": 0.95,
+            "distance": 0.15,
+            "threshold": 0.40,
+            "model": "Facenet512"
+        }
+        
+    Example response on no match:
+        {
+            "success": true,
+            "verified": false,
+            "message": "No matching face found in registered users",
+            "user": null
+        }
     """
     try:
-        # Read the uploaded file
+        # Validate file
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid file type. Please upload an image file."
+            )
+        
+        # Read uploaded image
         contents = await file.read()
         
         if not contents:
-            raise HTTPException(status_code=400, detail="Empty file uploaded")
+            raise HTTPException(
+                status_code=400, 
+                detail="Empty file uploaded. Please upload a valid image."
+            )
         
-        # Verify the face
-        result = face_service.verify_face(contents)
+        # Verify face against all users
+        result = face_service.verify_face_against_all_users(contents, db)
         
-        return JSONResponse(content=result, status_code=200)
-        
-    except Exception as e:
+        # Return result
         return JSONResponse(
-            content={
-                "success": False,
-                "message": "Error processing image",
-                "error": str(e),
-                "result": None
-            },
-            status_code=500
-        )
-
-
-@router.get("/registered-count")
-async def get_registered_count():
-    """Get the count of registered faces in the database"""
-    try:
-        count = face_service.get_registered_faces_count()
-        return {
-            "success": True,
-            "count": count,
-            "message": f"Found {count} registered face(s)"
-        }
-    except Exception as e:
-        return JSONResponse(
-            content={
-                "success": False,
-                "error": str(e),
-                "message": "Error getting registered faces count"
-            },
-            status_code=500
-        )
-
-
-@router.get("/health")
-async def health_check():
-    """Health check endpoint for face verification service"""
-    return {
-        "status": "healthy",
-        "service": "Face Verification",
-        "model": face_service.model_name,
-        "detector": face_service.detector_backend,
-        "metric": face_service.distance_metric
-    }
-
-
-@router.get("/image/{person_name}")
-async def get_person_image(person_name: str):
-    """
-    Get the registered image for a specific person
-    
-    Args:
-        person_name: The name of the person (filename without extension)
-        
-    Returns:
-        The image file
-    """
-    try:
-        image_path = face_service.get_person_image_path(person_name)
-        
-        if not image_path or not image_path.exists():
-            raise HTTPException(status_code=404, detail=f"Image not found for person: {person_name}")
-        
-        return FileResponse(
-            path=str(image_path),
-            media_type=f"image/{image_path.suffix[1:]}",
-            filename=image_path.name
+            content=result,
+            status_code=200
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving image: {str(e)}")
-
+        return JSONResponse(
+            content={
+                "success": False,
+                "verified": False,
+                "message": "Error processing image",
+                "error": str(e),
+                "user": None
+            },
+            status_code=500
+        )

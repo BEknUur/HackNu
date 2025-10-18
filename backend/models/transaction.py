@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Decimal
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Numeric
 from database import Base
 from sqlalchemy.orm import relationship
 
@@ -10,7 +10,7 @@ class Transaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
     
-    amount = Column(Decimal(15, 2), nullable=False)
+    amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), nullable=False)
     transaction_type = Column(String, nullable=False)  # 'transfer', 'purchase', 'deposit', 'withdrawal'
     description = Column(String)
