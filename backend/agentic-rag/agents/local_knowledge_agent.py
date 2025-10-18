@@ -1,7 +1,3 @@
-"""
-Local Knowledge Agent - specialized in searching internal documents.
-"""
-
 from langgraph.prebuilt import create_react_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from tools.vector_search import search_local_knowledge
@@ -20,14 +16,12 @@ def create_local_knowledge_agent():
         A compiled LangGraph ReAct agent
     """
     
-    # Initialize LLM
     llm = ChatGoogleGenerativeAI(
         model=settings.llm_model,
         google_api_key=settings.google_api_key,
-        temperature=0  # More deterministic for factual retrieval
+        temperature=1
     )
     
-    # Create agent with tools
     agent = create_react_agent(
         llm,
         tools=[search_local_knowledge],

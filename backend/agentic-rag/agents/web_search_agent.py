@@ -1,7 +1,3 @@
-"""
-Web Search Agent - specialized in finding current online information.
-"""
-
 from langgraph.prebuilt import create_react_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from tools.web_search import search_web, search_web_news
@@ -23,10 +19,8 @@ def create_web_search_agent():
     llm = ChatGoogleGenerativeAI(
         model=settings.llm_model,
         google_api_key=settings.google_api_key,
-        temperature=0  # More deterministic for factual search
+        temperature=1
     )
-    
-    # Create agent with tools
     agent = create_react_agent(
         llm,
         tools=[search_web, search_web_news],

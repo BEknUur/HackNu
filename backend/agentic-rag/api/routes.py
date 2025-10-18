@@ -1,36 +1,18 @@
-"""
-API routes for the Agentic RAG system.
-"""
-
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import StreamingResponse, Response
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from sse_starlette.sse import EventSourceResponse
 from models.requests import QueryRequest
 from models.responses import QueryResponse, AgentResult, HealthResponse
 from graph.agent_graph import get_agent_graph
 from langchain_core.messages import HumanMessage
 from config.settings import settings
-import uuid
 import time
 import json
 from datetime import datetime
 from typing import Optional
-import asyncio
 
 
-router = APIRouter(prefix=settings.api_v1_prefix, tags=["Agentic RAG"])
-
-# Initialize checkpointer on module load
-_checkpointer_initialized = False
-
-async def ensure_checkpointer_initialized():
-    """Ensure checkpointer tables are initialized (PostgreSQL only)."""
-    global _checkpointer_initialized
-    if not _checkpointer_initialized:
-        # For SQLite, the checkpointer is automatically initialized
-        # when the graph is created, so no additional initialization needed
-        _checkpointer_initialized = True
-
+router = APIRouter(prefix="/api/agents/", tags=["Agentic RAG"])
 
 @router.post("/query", response_model=QueryResponse)
 async def query_agents(request: QueryRequest):
@@ -49,31 +31,22 @@ async def query_agents(request: QueryRequest):
     start_time = time.time()
     
     try:
-        # Generate session ID if not provided
-        session_id = request.session_id or str(uuid.uuid4())
-        
-        # Get the agent graph
+        session_id = request.session_id
         agent_graph = get_agent_graph()
         
-        # Prepare initial state
         initial_state = {
             "messages": [HumanMessage(content=request.query)]
         }
         
-        # Configure graph execution
         config = {
             "configurable": {
                 "thread_id": session_id
             },
-            "recursion_limit": request.max_iterations + 10  # Allow for agent loops
+            "recursion_limit": request.max_iterations
         }
         
-        print(f"Processing query: {request.query[:100]}...")
-        
-        # Invoke the graph
         result = await agent_graph.ainvoke(initial_state, config)
         
-        # Extract messages from result
         messages = result.get("messages", [])
         
         # Get final answer - look for last AI message with actual content

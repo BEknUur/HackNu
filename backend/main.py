@@ -5,6 +5,7 @@ from services.auth.router import router as auth_router
 from services.account.router import router as account_router
 from services.transaction.router import router as transaction_router
 from faceid.router import router as faceid_router
+from rag_agent.routes.router import router as rag_router
 from database import Base, engine
 
 
@@ -34,6 +35,7 @@ app.include_router(auth_router, prefix="/api/auth")
 app.include_router(account_router, prefix="/api")
 app.include_router(transaction_router, prefix="/api")
 app.include_router(faceid_router, prefix="/api/faceid", tags=["Face Verification"])
+app.include_router(rag_router, prefix="/api/rag", tags=["RAG"])
 
 @app.on_event("startup")
 def startup_event():
