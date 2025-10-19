@@ -5,8 +5,9 @@ import FaceCamera from '@/components/face-camera';
 import ZamanLogo from '@/components/zaman-logo';
 import { Ionicons } from '@expo/vector-icons';
 import { ZamanColors } from '@/constants/theme';
+import { config } from '@/lib/config';
 
-const API_URL = 'http://46.101.175.118:8000/api';
+const API_URL = `${config.backendURL}/api`;
 
 interface UserData {
   id: number;

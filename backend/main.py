@@ -45,7 +45,7 @@ app.include_router(financial_goals_router, prefix="/api")
 app.include_router(faceid_router, prefix="/api/faceid", tags=["Face Verification"])
 app.include_router(rag_router, tags=["RAG"])
 app.include_router(rag_live_query_router, tags=["RAG Live Query"])
-app.include_router(rag_transaction_router, tags=["RAG Transactions"])
+app.include_router(rag_transaction_router)
 
 @app.on_event("startup")
 def startup_event():

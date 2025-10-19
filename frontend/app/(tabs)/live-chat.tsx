@@ -1,6 +1,6 @@
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { useLiveAPIWithRAG } from '../../hooks/use-live-api-with-rag';
+import { useLiveAPI } from '../../hooks/use-live-api';
 import Constants from 'expo-constants';
 import { AudioRecorder } from '../../lib/audio-recorder';
 import { useWebcam } from '../../hooks/use-webcam';
@@ -23,7 +23,7 @@ type Language = 'ru' | 'en';
 
 function LiveChatContent() {
   const apiOptions = { apiKey: API_KEY || '' };
-  const { connected, connect, disconnect, client, volume, setConfig, ragToolsEnabled, ragToolsHealthy, setRAGToolsEnabled } = useLiveAPIWithRAG(apiOptions);
+  const { connected, connect, disconnect, client, volume, setConfig } = useLiveAPI(apiOptions);
   const [messages, setMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'ai'}>>([]);
   const [isMicOn, setIsMicOn] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
@@ -388,8 +388,8 @@ INSTRUCTIONS:
         </View>
         
         <View style={styles.headerRight}>
-          {/* RAG Tools Indicator */}
-          {ragToolsEnabled && (
+          {/* RAG Tools Indicator - Temporarily disabled */}
+          {/* {ragToolsEnabled && (
             <View style={[styles.ragIndicator, ragToolsHealthy ? styles.ragIndicatorHealthy : styles.ragIndicatorError]}>
               <Ionicons 
                 name={ragToolsHealthy ? "checkmark-circle" : "alert-circle"} 
@@ -401,7 +401,7 @@ INSTRUCTIONS:
                 RAG
               </Text>
             </View>
-          )}
+          )} */}
           
           {/* Language Switcher */}
           <View style={styles.languageSwitcher}>

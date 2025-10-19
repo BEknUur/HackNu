@@ -2,8 +2,9 @@ import { StyleSheet, View, Text, TouchableOpacity, Alert, Modal, Image, Activity
 import { useState } from 'react';
 import FaceCamera from '@/components/face-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { config } from '@/lib/config';
 
-const API_URL = 'http://46.101.175.118:8000/api/faceid';
+const API_URL = `${config.backendURL}/api/faceid`;
 
 interface UserMatchInfo {
   user_id: number;
