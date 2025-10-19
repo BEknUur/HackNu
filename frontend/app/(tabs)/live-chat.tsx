@@ -129,7 +129,7 @@ INSTRUCTIONS:
         parts: [{ text: systemInstruction }]
       }
     });
-  }, [setConfig, language]);
+  }, [language]); // Removed setConfig from dependencies to prevent infinite loop
 
   // Update preview video when stream changes
   useEffect(() => {

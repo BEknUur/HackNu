@@ -8,7 +8,7 @@
  * - Multi-agent coordination
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useLiveAPI, UseLiveAPIResults } from "./use-live-api";
 import { LiveClientOptions } from "../lib/types";
 import { LiveConnectConfig } from "@google/genai";
@@ -27,6 +27,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
   const liveAPI = useLiveAPI(options);
   const [ragToolsEnabled, setRAGToolsEnabled] = useState(true);
   const [ragToolsHealthy, setRAGToolsHealthy] = useState(false);
+  const lastConfigRef = useRef<string | null>(null);
 
   // Check RAG tools health on mount and periodically
   useEffect(() => {
@@ -75,6 +76,16 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
 
   // Enhanced setConfig that adds RAG tool declarations
   const setConfigWithRAG = useCallback((newConfig: LiveConnectConfig) => {
+    // Create a stable config string to prevent infinite loops
+    const configString = JSON.stringify(newConfig);
+    
+    if (lastConfigRef.current === configString) {
+      console.log('[RAG] Config unchanged, skipping update');
+      return;
+    }
+    
+    lastConfigRef.current = configString;
+
     if (ragToolsEnabled && ragToolsHealthy) {
       // Add RAG function declarations to the config
       const ragConfig: LiveConnectConfig = {
