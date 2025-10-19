@@ -2,6 +2,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, Modal, Imag
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import FaceCamera from '@/components/face-camera';
+import ZamanLogo from '@/components/zaman-logo';
 import { Ionicons } from '@expo/vector-icons';
 import { ZamanColors } from '@/constants/theme';
 
@@ -390,7 +391,7 @@ export default function LoginScreen() {
           {/* Minimal Header */}
           <View style={styles.header}>
             <View style={styles.logoMark}>
-              <View style={styles.logoCircle} />
+              <ZamanLogo size={90} withAccent />
             </View>
             <Text style={styles.appName}>ZAMAN</Text>
             <Text style={styles.tagline}>
@@ -617,16 +618,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoMark: {
-    marginBottom: 24,
+    marginBottom: 20,
     alignItems: 'center',
-  },
-  logoCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: ZamanColors.persianGreen,
-    borderWidth: 3,
-    borderColor: ZamanColors.solar,
   },
   appName: {
     fontSize: 32,
