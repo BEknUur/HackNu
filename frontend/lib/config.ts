@@ -77,6 +77,8 @@ export const config = {
     cart: '/api/cart',
     auth: '/api/auth',
     faceid: '/api/faceid',
+    accounts: '/api/accounts',
+    transactions: '/api/transactions',
   },
   
   // Feature flags

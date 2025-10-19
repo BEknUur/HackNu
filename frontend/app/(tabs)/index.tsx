@@ -75,10 +75,10 @@ export default function HomeScreen() {
       bgColor: ZamanColors.cloud
     },
     {
-      title: 'Face Verification',
-      description: 'Secure biometric authentication',
-      icon: 'scan-circle',
-      href: '/face-verify' as const,
+      title: 'Wallet',
+      description: 'Manage your transactions',
+      icon: 'wallet',
+      href: '/transactions' as const,
       bgColor: ZamanColors.cloud
     },
     {

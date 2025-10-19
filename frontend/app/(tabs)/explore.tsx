@@ -349,7 +349,12 @@ export default function ExploreScreen() {
             placeholderTextColor={ZamanColors.gray[400]}
             multiline
             editable={!chatState.loading}
-            onSubmitEditing={sendMessage}
+            onKeyPress={(e: any) => {
+              if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
           />
           <TouchableOpacity
             style={[

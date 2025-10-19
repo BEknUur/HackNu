@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ZamanColors } from '@/constants/theme';
 import { config } from '@/lib/config';
 
-const API_URL = `${config.backendURL}/api`;
+const API_URL = 'http://46.101.175.118:8000/api';
 
 interface UserData {
   id: number;
