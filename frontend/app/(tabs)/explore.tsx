@@ -15,11 +15,11 @@ import { ZamanColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 import ZamanLogo from '@/components/zaman-logo';
+import { config } from '@/lib/config';
 
 // AI Character Configuration
 const AI_CHARACTER_NAME = "Zaman";
 const WELCOME_MESSAGE = "I'm Zaman. Your future self asked me to help you get there.";
-const API_BASE_URL = "http://46.101.175.118:8000";
 
 interface ChatMessage {
   id: number;
@@ -94,7 +94,7 @@ export default function ExploreScreen() {
       const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
       
       // Call RAG API
-      const response = await fetch(`${API_BASE_URL}/api/rag/live/query`, {
+      const response = await fetch(`${config.backendURL}${config.endpoints.rag.live.query}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -349,7 +349,12 @@ export default function ExploreScreen() {
             placeholderTextColor={ZamanColors.gray[400]}
             multiline
             editable={!chatState.loading}
-            onSubmitEditing={sendMessage}
+            onKeyPress={(e: any) => {
+              if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
           />
           <TouchableOpacity
             style={[

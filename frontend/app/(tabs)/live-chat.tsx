@@ -1,10 +1,10 @@
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { useLiveAPIWithRAG } from '../../hooks/use-live-api-with-rag';
+import { useLiveAPIWithRAG } from '@/hooks/use-live-api-with-rag';
 import Constants from 'expo-constants';
-import { AudioRecorder } from '../../lib/audio-recorder';
-import { useWebcam } from '../../hooks/use-webcam';
-import { useScreenCapture } from '../../hooks/use-screen-capture';
+import { AudioRecorder } from '@/lib/audio-recorder';
+import { useWebcam } from '@/hooks/use-webcam';
+import { useScreenCapture } from '@/hooks/use-screen-capture';
 import { ZamanColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -23,7 +23,7 @@ type Language = 'ru' | 'en';
 
 function LiveChatContent() {
   const apiOptions = { apiKey: API_KEY || '' };
-  const { connected, connect, disconnect, client, volume, setConfig, ragToolsEnabled, ragToolsHealthy, setRAGToolsEnabled } = useLiveAPIWithRAG(apiOptions);
+  const { connected, connect, disconnect, client, volume, setConfig, ragToolsEnabled, ragToolsHealthy } = useLiveAPIWithRAG(apiOptions);
   const [messages, setMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'ai'}>>([]);
   const [isMicOn, setIsMicOn] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
