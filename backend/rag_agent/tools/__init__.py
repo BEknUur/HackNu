@@ -51,15 +51,6 @@ from .cart_tools import (
     set_cart_context,
 )
 
-# Financial goals tools
-from .financial_goal_tools import (
-    get_my_financial_goals,
-    create_financial_goal,
-    get_goal_analysis,
-    get_financial_summary,
-    set_goal_context,
-)
-
 __all__ = [
     # RAG tools
     "vector_search_tool",
@@ -102,12 +93,5 @@ __all__ = [
     "checkout_cart",
     "clear_cart",
     "set_cart_context",
-    
-    # Financial goals
-    "get_my_financial_goals",
-    "create_financial_goal",
-    "get_goal_analysis",
-    "get_financial_summary",
-    "set_goal_context",
 ]
 

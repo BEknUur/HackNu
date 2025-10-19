@@ -24,7 +24,6 @@ from rag_agent.tools import (
     set_transaction_history_context,
     set_product_context,
     set_cart_context,
-    set_goal_context,
 )
 from database import get_db
 
@@ -84,9 +83,7 @@ async def query_with_transactions(
         set_transaction_history_context(user_id=request.user_id, db=db)
         set_product_context(user_id=request.user_id, db=db)
         set_cart_context(user_id=request.user_id, db=db)
-        set_goal_context(user_id=request.user_id, db=db)
         
-        # Initialize the RAG system if not already done
         if not rag_system.supervisor_agent:
             rag_system.initialize(environment=request.environment)
         
