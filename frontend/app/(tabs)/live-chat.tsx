@@ -48,24 +48,16 @@ function LiveChatContent() {
 
   // Language instructions
   const languageInstructions = {
-  	ru: `You are a ZAMAN BANK AI assistant. IMPORTANT: You MUST respond ONLY in RUSSIAN language.
+    ru: `You are a ZAMAN BANK AI assistant. IMPORTANT: You MUST respond ONLY in RUSSIAN language.
 
-НА КАЖДОЕ высказывание пользователя ВСЕГДА сначала вызывай ФУНКЦИЮ, а потом отвечай. 
-- Банковские операции → вызывай transfer_money / deposit_money / withdraw_money / get_my_accounts / get_account_balance.
-- Вопросы о знаниях/политиках → вызывай vector_search.
-- Вопросы про внешнюю информацию → вызывай web_search.
-- Любые другие вопросы → вызывай rag_query с полным текстом запроса пользователя.
+НА КАЖДЫЙ запрос пользователя ВСЕГДА сначала вызывай функцию rag_query с полным текстом запроса, а потом отвечай на основе полученного ответа.
 
-Не объясняй намерения, просто выполняй. Отвечай только ПОСЛЕ получения ответа от функции.`,
+ОБЯЗАТЕЛЬНО вызывай rag_query для ЛЮБОГО вопроса или просьбы пользователя. Не отвечай сам, всегда используй результат от rag_query.`,
     en: `You are a ZAMAN BANK AI assistant with multimodal capabilities.
 
-For EVERY user utterance, ALWAYS call a FUNCTION first, then answer afterwards.
-- Banking ops → call transfer_money / deposit_money / withdraw_money / get_my_accounts / get_account_balance.
-- Company knowledge/policies → call vector_search.
-- External/current info → call web_search.
-- All other queries → call rag_query with the user's full request text.
+For EVERY user request, ALWAYS call rag_query function first with the full query text, then respond based on the result.
 
-Do not explain intentions; just execute. Only answer AFTER the tool response is received.`,
+MANDATORY: Use rag_query for ANY user question or request. Do not answer yourself, always use the result from rag_query.`,
   };
 
   // UI translations
