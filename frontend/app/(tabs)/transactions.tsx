@@ -33,6 +33,9 @@ import {
   }
   
   type TransactionModalType = 'deposit' | 'withdrawal' | 'transfer' | null;
+
+  // Only KZT currency is supported
+  const CURRENCY = 'KZT';
   
   export default function TransactionsScreen() {
     const [user, setUser] = useState<UserData | null>(null);
@@ -43,10 +46,10 @@ import {
     const [modalType, setModalType] = useState<TransactionModalType>(null);
     const [processing, setProcessing] = useState(false);
   
-    // Form state
-    const [amount, setAmount] = useState('');
-    const [toAccountId, setToAccountId] = useState('');
-    const [description, setDescription] = useState('');
+  // Form state
+  const [amount, setAmount] = useState('');
+  const [toAccountId, setToAccountId] = useState('');
+  const [description, setDescription] = useState('');
   
     useEffect(() => {
       loadUser();
@@ -151,14 +154,14 @@ import {
           await createDeposit(user.id, {
             account_id: account.id,
             amount: amountNum,
-            currency: account.currency,
+            currency: CURRENCY,
             description: description || undefined,
           });
         } else if (modalType === 'withdrawal') {
           await createWithdrawal(user.id, {
             account_id: account.id,
             amount: amountNum,
-            currency: account.currency,
+            currency: CURRENCY,
             description: description || undefined,
           });
         } else if (modalType === 'transfer') {
@@ -171,12 +174,12 @@ import {
             }
             return;
           }
-  
+
           await createTransfer(user.id, {
             from_account_id: account.id,
             to_account_id: toAccountIdNum,
             amount: amountNum,
-            currency: account.currency,
+            currency: CURRENCY,
             description: description || undefined,
           });
         }
@@ -388,20 +391,22 @@ import {
   
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Currency</Text>
-                  <TextInput style={[styles.input, styles.inputReadonly]} value={account.currency} editable={false} />
+                  <TextInput style={[styles.input, styles.inputReadonly]} value={CURRENCY} editable={false} />
                 </View>
-  
+
                 {modalType === 'transfer' && (
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>To Account ID</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter account ID"
-                      keyboardType="number-pad"
-                      value={toAccountId}
-                      onChangeText={setToAccountId}
-                    />
-                  </View>
+                  <>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>To Account ID</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter account ID"
+                        keyboardType="number-pad"
+                        value={toAccountId}
+                        onChangeText={setToAccountId}
+                      />
+                    </View>
+                  </>
                 )}
   
                 <View style={styles.inputGroup}>
