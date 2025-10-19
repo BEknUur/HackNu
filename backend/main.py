@@ -1,16 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
-from services.auth.router import router as auth_router
-from services.account.router import router as account_router
-from services.transaction.router import router as transaction_router
-from services.product.router import router as product_router
-from services.cart.router import router as cart_router
-from services.financial_goals.router import router as financial_goals_router
-from faceid.router import router as faceid_router
-from rag_agent.routes.router import router as rag_router
-from rag_agent.routes.live_query_router import router as rag_live_query_router
+
 from database import Base, engine
+from faceid.router import router as faceid_router
+from predict.router import router as predict_router
+from rag_agent.routes.live_query_router import router as rag_live_query_router
+from rag_agent.routes.router import router as rag_router
+from services.account.router import router as account_router
+from services.auth.router import router as auth_router
+from services.cart.router import router as cart_router
+from services.product.router import router as product_router
+from services.transaction.router import router as transaction_router
 
 
 app = FastAPI(
@@ -40,10 +41,10 @@ app.include_router(account_router, prefix="/api")
 app.include_router(transaction_router, prefix="/api")
 app.include_router(product_router, prefix="/api")
 app.include_router(cart_router, prefix="/api")
-app.include_router(financial_goals_router, prefix="/api")
 app.include_router(faceid_router, prefix="/api/faceid", tags=["Face Verification"])
 app.include_router(rag_router, tags=["RAG"])
 app.include_router(rag_live_query_router, tags=["RAG Live Query"])
+app.include_router(predict_router, prefix="/api")
 
 @app.on_event("startup")
 def startup_event():

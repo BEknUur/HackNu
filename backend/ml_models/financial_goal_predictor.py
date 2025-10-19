@@ -1,287 +1,277 @@
-import numpy as np
-from typing import Dict, List, Optional
-from pathlib import Path
-import json
+"""
+Financial Goal Predictor
+
+ML-based predictor for financial goal achievement probability.
+Uses rule-based logic for predictions (can be replaced with trained ML model).
+"""
+
 import logging
+from datetime import datetime
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
 
 class FinancialGoalPredictor:
-    """
-    ML модель для прогнозирования достижения финансовых целей.
+    """Predicts probability of achieving financial goals."""
     
-    Использует эвристический подход, основанный на финансовой математике:
-    - Анализ доходов и расходов
-    - Расчет требуемых накоплений
-    - Оценка вероятности достижения цели
-    - Генерация персонализированных рекомендаций
-    """
+    def __init__(self):
+        """Initialize the predictor."""
+        self.model_loaded = True
+        logger.info("Financial goal predictor initialized")
     
-    def __init__(self, model_path: str = "ml_models/saved_models/"):
-        self.model_path = Path(model_path)
-        self.model_path.mkdir(parents=True, exist_ok=True)
-        
-        # Пороги для классификации риска
-        self.risk_thresholds = {
-            'low': 0.7,      # >= 70% вероятность
-            'medium': 0.4,   # 40-70% вероятность
-            'high': 0.4      # < 40% вероятность
-        }
-        
-        # Рекомендуемые коэффициенты сбережений
-        self.savings_rate_recommendations = {
-            'conservative': 0.3,  # 30% от дохода
-            'moderate': 0.2,      # 20% от дохода
-            'aggressive': 0.4     # 40% от дохода
-        }
-    
-    def predict(self, user_data: Dict) -> Dict:
+    def predict(self, features: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Делает предсказание для конкретного пользователя.
+        Predict goal achievement probability and provide recommendations.
         
         Args:
-            user_data: {
-                'avg_monthly_income': float,
-                'avg_monthly_expenses': float,
-                'current_savings': float,
-                'target_amount': float,
-                'deadline_months': int,
-                'expense_volatility': float (optional)
-            }
-        
+            features: Dictionary containing:
+                - avg_monthly_income: Average monthly income
+                - avg_monthly_expenses: Average monthly expenses
+                - current_savings: Current savings amount
+                - target_amount: Target goal amount
+                - deadline_months: Months until deadline
+                - expense_volatility: Volatility in expenses
+                
         Returns:
-            {
-                'probability': float,                  # Вероятность достижения (0-1)
-                'recommended_monthly_savings': float,  # Рекомендуемая сумма
-                'can_achieve': bool,                   # Достижимо ли
-                'risk_level': str,                     # 'low', 'medium', 'high'
-                'insights': List[str],                 # Персонализированные советы
-                'scenarios': Dict                      # Разные сценарии
-            }
+            Prediction dictionary with probability, recommendations, and risk level
         """
+        avg_income = features.get('avg_monthly_income', 0.0)
+        avg_expenses = features.get('avg_monthly_expenses', 0.0)
+        current_savings = features.get('current_savings', 0.0)
+        target_amount = features.get('target_amount', 0.0)
+        deadline_months = features.get('deadline_months', 12)
+        expense_volatility = features.get('expense_volatility', 0.0)
+        
         try:
-            # Валидация входных данных
-            self._validate_input(user_data)
+            monthly_savings_capacity = avg_income - avg_expenses
+            required_monthly_savings = (
+                (target_amount - current_savings) / deadline_months 
+                if deadline_months > 0 else 0.0
+            )
             
-            # Основной расчет
-            prediction = self._calculate_prediction(user_data)
+            probability = self._calculate_probability(
+                monthly_savings_capacity,
+                required_monthly_savings,
+                current_savings,
+                target_amount,
+                deadline_months,
+                expense_volatility,
+                avg_income
+            )
             
-            # Генерация сценариев
-            scenarios = self._generate_scenarios(user_data)
-            prediction['scenarios'] = scenarios
+            risk_level = self._determine_risk_level(
+                probability,
+                required_monthly_savings,
+                monthly_savings_capacity,
+                expense_volatility,
+                avg_income
+            )
             
-            # Генерация инсайтов
-            insights = self._generate_insights(user_data, prediction)
-            prediction['insights'] = insights
+            recommended_monthly_savings = self._calculate_recommended_savings(
+                target_amount,
+                current_savings,
+                deadline_months,
+                monthly_savings_capacity,
+                probability
+            )
             
-            logger.info(f"Prediction completed: probability={prediction['probability']:.2f}")
-            return prediction
+            insights = self._generate_insights(
+                probability,
+                risk_level,
+                monthly_savings_capacity,
+                required_monthly_savings,
+                recommended_monthly_savings,
+                deadline_months
+            )
+            
+            result = {
+                'probability': round(probability, 4),
+                'recommended_monthly_savings': round(recommended_monthly_savings, 2),
+                'risk_level': risk_level,
+                'insights': insights,
+                'model_version': '1.0',
+                'prediction_date': datetime.now().isoformat()
+            }
+            
+            logger.info(f"Prediction completed: probability={probability:.2f}, risk={risk_level}")
+            return result
             
         except Exception as e:
             logger.error(f"Error in prediction: {e}")
-            raise
-    
-    def _validate_input(self, user_data: Dict) -> None:
-        """Валидация входных данных."""
-        required_fields = [
-            'avg_monthly_income',
-            'avg_monthly_expenses',
-            'current_savings',
-            'target_amount',
-            'deadline_months'
-        ]
-        
-        for field in required_fields:
-            if field not in user_data:
-                raise ValueError(f"Missing required field: {field}")
+            required_monthly = (target_amount - current_savings) / max(deadline_months, 1)
             
-            if user_data[field] < 0:
-                raise ValueError(f"Field {field} cannot be negative")
-        
-        if user_data['deadline_months'] <= 0:
-            raise ValueError("Deadline must be greater than 0")
+            return {
+                'probability': 0.5,
+                'recommended_monthly_savings': round(required_monthly, 2),
+                'risk_level': 'medium',
+                'insights': ['Unable to complete detailed analysis. Please review your financial data.'],
+                'model_version': '1.0',
+                'error': str(e)
+            }
     
-    def _calculate_prediction(self, user_data: Dict) -> Dict:
-        """Основной расчет предсказания."""
-        avg_income = float(user_data['avg_monthly_income'])
-        avg_expenses = float(user_data['avg_monthly_expenses'])
-        current_savings = float(user_data['current_savings'])
-        target_amount = float(user_data['target_amount'])
-        deadline_months = int(user_data['deadline_months'])
+    def _calculate_probability(
+        self,
+        monthly_savings_capacity: float,
+        required_monthly_savings: float,
+        current_savings: float,
+        target_amount: float,
+        deadline_months: int,
+        expense_volatility: float,
+        avg_income: float
+    ) -> float:
+        """Calculate probability of goal achievement (0-1)."""
         
-        # Текущая способность к накоплению
-        monthly_surplus = max(0, avg_income - avg_expenses)
+        # Base probability on savings capacity vs required savings
+        if required_monthly_savings <= 0:
+            return 1.0  # Already achieved
         
-        # Сколько нужно накопить
-        remaining_amount = max(0, target_amount - current_savings)
+        if monthly_savings_capacity <= 0:
+            return 0.1  # Very low if no savings capacity
         
-        # Требуемая ежемесячная сумма
-        if deadline_months > 0:
-            required_monthly = remaining_amount / deadline_months
+        # Ratio of capacity to requirement
+        capacity_ratio = monthly_savings_capacity / required_monthly_savings
+        
+        # Base probability from capacity ratio
+        if capacity_ratio >= 1.5:
+            base_prob = 0.9
+        elif capacity_ratio >= 1.2:
+            base_prob = 0.8
+        elif capacity_ratio >= 1.0:
+            base_prob = 0.7
+        elif capacity_ratio >= 0.8:
+            base_prob = 0.6
+        elif capacity_ratio >= 0.6:
+            base_prob = 0.4
+        elif capacity_ratio >= 0.4:
+            base_prob = 0.3
         else:
-            required_monthly = remaining_amount
+            base_prob = 0.2
         
-        # Базовая вероятность (отношение возможностей к требованиям)
-        if required_monthly > 0:
-            base_probability = min(1.0, monthly_surplus / required_monthly)
-        else:
-            base_probability = 1.0  # Цель уже достигнута
+        # Adjust for time horizon
+        if deadline_months > 24:
+            base_prob *= 0.9  # Longer term = more uncertainty
+        elif deadline_months < 6:
+            base_prob *= 0.95  # Short term = less flexibility
         
-        # Корректировка вероятности с учетом волатильности
-        expense_volatility = user_data.get('expense_volatility', 0.1)
-        volatility_penalty = min(0.2, expense_volatility * 0.5)  # Максимум 20% штрафа
-        adjusted_probability = max(0.0, base_probability - volatility_penalty)
+        # Adjust for volatility
+        if avg_income > 0:
+            volatility_ratio = expense_volatility / avg_income
+            if volatility_ratio > 0.3:
+                base_prob *= 0.85  # High volatility reduces probability
+            elif volatility_ratio > 0.2:
+                base_prob *= 0.92
         
-        # Учитываем горизонт планирования (чем дальше, тем выше риск)
-        time_penalty = min(0.1, (deadline_months / 120) * 0.1)  # Макс 10% за 10 лет
-        final_probability = max(0.0, adjusted_probability - time_penalty)
+        # Adjust for current progress
+        progress_ratio = current_savings / target_amount if target_amount > 0 else 0
+        if progress_ratio > 0.5:
+            base_prob += 0.05  # Boost if already halfway
+        elif progress_ratio > 0.25:
+            base_prob += 0.03
         
-        # Рекомендуемая сумма (с 15% запасом)
-        recommended_savings = required_monthly * 1.15
-        
-        # Определение уровня риска
-        if final_probability >= self.risk_thresholds['low']:
-            risk_level = 'low'
-        elif final_probability >= self.risk_thresholds['medium']:
-            risk_level = 'medium'
-        else:
-            risk_level = 'high'
-        
-        # Проверка достижимости
-        can_achieve = monthly_surplus >= required_monthly * 0.8  # 80% порог
-        
-        return {
-            'probability': round(final_probability, 3),
-            'recommended_monthly_savings': round(recommended_savings, 2),
-            'can_achieve': can_achieve,
-            'risk_level': risk_level,
-            'monthly_surplus': round(monthly_surplus, 2),
-            'required_monthly': round(required_monthly, 2),
-            'remaining_amount': round(remaining_amount, 2)
-        }
+        # Ensure probability is between 0 and 1
+        return max(0.05, min(0.99, base_prob))
     
-    def _generate_scenarios(self, user_data: Dict) -> Dict:
-        """
-        Генерация разных сценариев достижения цели.
-        """
-        target_amount = float(user_data['target_amount'])
-        current_savings = float(user_data['current_savings'])
-        avg_income = float(user_data['avg_monthly_income'])
-        avg_expenses = float(user_data['avg_monthly_expenses'])
-        deadline_months = int(user_data['deadline_months'])
+    def _determine_risk_level(
+        self,
+        probability: float,
+        required_monthly_savings: float,
+        monthly_savings_capacity: float,
+        expense_volatility: float,
+        avg_income: float
+    ) -> str:
+        """Determine risk level: low, medium, or high."""
         
-        monthly_surplus = max(0, avg_income - avg_expenses)
-        remaining = target_amount - current_savings
-        
-        scenarios = {}
-        
-        # Оптимистичный сценарий (увеличение дохода на 20%)
-        optimistic_income = avg_income * 1.2
-        optimistic_surplus = optimistic_income - avg_expenses
-        if optimistic_surplus > 0:
-            optimistic_months = int(remaining / optimistic_surplus)
-            scenarios['optimistic'] = {
-                'months_needed': optimistic_months,
-                'monthly_savings': round(optimistic_surplus, 2),
-                'description': 'При увеличении дохода на 20%'
-            }
-        
-        # Реалистичный сценарий (текущий темп)
-        if monthly_surplus > 0:
-            realistic_months = int(remaining / monthly_surplus)
-            scenarios['realistic'] = {
-                'months_needed': realistic_months,
-                'monthly_savings': round(monthly_surplus, 2),
-                'description': 'При текущем уровне доходов и расходов'
-            }
-        
-        # Пессимистичный сценарий (увеличение расходов на 10%)
-        pessimistic_expenses = avg_expenses * 1.1
-        pessimistic_surplus = max(0, avg_income - pessimistic_expenses)
-        if pessimistic_surplus > 0:
-            pessimistic_months = int(remaining / pessimistic_surplus)
-            scenarios['pessimistic'] = {
-                'months_needed': pessimistic_months,
-                'monthly_savings': round(pessimistic_surplus, 2),
-                'description': 'При увеличении расходов на 10%'
-            }
-        
-        # Агрессивный сценарий (сокращение расходов на 20%)
-        aggressive_expenses = avg_expenses * 0.8
-        aggressive_surplus = avg_income - aggressive_expenses
-        if aggressive_surplus > 0:
-            aggressive_months = int(remaining / aggressive_surplus)
-            scenarios['aggressive'] = {
-                'months_needed': aggressive_months,
-                'monthly_savings': round(aggressive_surplus, 2),
-                'description': 'При сокращении расходов на 20%'
-            }
-        
-        return scenarios
+        if probability >= 0.8:
+            return 'low'
+        elif probability >= 0.6:
+            # Check if tight margin
+            if monthly_savings_capacity < required_monthly_savings * 1.1:
+                return 'medium'
+            return 'low'
+        elif probability >= 0.4:
+            return 'medium'
+        else:
+            return 'high'
     
-    def _generate_insights(self, user_data: Dict, prediction: Dict) -> List[str]:
-        """Генерация персонализированных советов."""
+    def _calculate_recommended_savings(
+        self,
+        target_amount: float,
+        current_savings: float,
+        deadline_months: int,
+        monthly_savings_capacity: float,
+        probability: float
+    ) -> float:
+        """Calculate recommended monthly savings amount."""
+        
+        remaining_amount = target_amount - current_savings
+        
+        if deadline_months <= 0:
+            return remaining_amount
+        
+        # Base recommendation with buffer
+        buffer_multiplier = 1.1 if probability < 0.7 else 1.05
+        recommended = (remaining_amount / deadline_months) * buffer_multiplier
+        
+        # Don't exceed capacity
+        recommended = min(recommended, monthly_savings_capacity * 0.9)
+        
+        # Ensure minimum
+        recommended = max(recommended, remaining_amount / deadline_months)
+        
+        return recommended
+    
+    def _generate_insights(
+        self,
+        probability: float,
+        risk_level: str,
+        monthly_savings_capacity: float,
+        required_monthly_savings: float,
+        recommended_monthly_savings: float,
+        deadline_months: int
+    ) -> List[str]:
+        """Generate actionable insights based on prediction."""
+        
         insights = []
         
-        avg_income = float(user_data['avg_monthly_income'])
-        avg_expenses = float(user_data['avg_monthly_expenses'])
-        current_savings = float(user_data['current_savings'])
-        target_amount = float(user_data['target_amount'])
-        deadline_months = int(user_data['deadline_months'])
-        
-        probability = prediction['probability']
-        recommended_savings = prediction['recommended_monthly_savings']
-        monthly_surplus = prediction['monthly_surplus']
-        risk_level = prediction['risk_level']
-        
-        # Анализ вероятности достижения
+        # Probability-based insights
         if probability >= 0.8:
-            insights.append("✅ Отличные шансы! Вы на правильном пути к достижению цели.")
-        elif probability >= 0.5:
-            insights.append("⚠️ Цель достижима, но требует дисциплины и возможно корректировки расходов.")
+            insights.append(f"You have a high chance ({probability*100:.0f}%) of achieving this goal.")
+        elif probability >= 0.6:
+            insights.append(f"You have a moderate chance ({probability*100:.0f}%) of achieving this goal.")
         else:
-            insights.append("🔴 Текущий план требует серьезной корректировки. Рассмотрите изменение срока или суммы цели.")
+            insights.append(f"Achieving this goal may be challenging ({probability*100:.0f}% probability).")
         
-        # Анализ рекомендуемой суммы
-        savings_to_income_ratio = recommended_savings / avg_income if avg_income > 0 else 0
-        if savings_to_income_ratio > 0.5:
-            insights.append(f"💡 Рекомендуемая сумма ({recommended_savings:,.0f} ₸) составляет более 50% дохода. "
-                          f"Рассмотрите увеличение срока до {int(deadline_months * 1.5)} месяцев.")
-        elif savings_to_income_ratio > 0.3:
-            insights.append(f"📊 Для достижения цели потребуется откладывать около {savings_to_income_ratio*100:.0f}% дохода.")
+        # Capacity vs requirement
+        if monthly_savings_capacity < required_monthly_savings:
+            shortage = required_monthly_savings - monthly_savings_capacity
+            insights.append(
+                f"Your current savings capacity (${monthly_savings_capacity:.2f}/month) "
+                f"is ${shortage:.2f} short of what's needed."
+            )
+            insights.append("Consider increasing income or reducing expenses.")
+        else:
+            surplus = monthly_savings_capacity - required_monthly_savings
+            insights.append(
+                f"You have ${surplus:.2f}/month extra capacity beyond what's required."
+            )
         
-        # Анализ текущего уровня сбережений
-        current_savings_rate = monthly_surplus / avg_income if avg_income > 0 else 0
-        if current_savings_rate < 0.1:
-            insights.append(f"⚡ Текущий уровень сбережений низкий ({current_savings_rate*100:.1f}%). "
-                          f"Рекомендуем начать с оптимизации расходов.")
-        elif current_savings_rate >= 0.2:
-            insights.append(f"👍 У вас хороший уровень сбережений ({current_savings_rate*100:.0f}%). Продолжайте в том же духе!")
+        # Recommendation
+        insights.append(
+            f"Save ${recommended_monthly_savings:.2f} per month to stay on track with a safety buffer."
+        )
         
-        # Рекомендации по срокам
-        if recommended_savings > monthly_surplus * 1.5:
-            suggested_months = int((target_amount - current_savings) / monthly_surplus) if monthly_surplus > 0 else deadline_months * 2
-            insights.append(f"⏰ Рекомендуем увеличить срок до {suggested_months} месяцев для более комфортного достижения цели.")
+        # Timeline insight
+        if deadline_months < 12:
+            insights.append("This is a short-term goal. Focus on consistent monthly savings.")
+        elif deadline_months > 24:
+            insights.append("This is a long-term goal. Regular reviews and adjustments are important.")
         
-        # Анализ риска
+        # Risk-based advice
         if risk_level == 'high':
-            insights.append("🎯 Высокий уровень риска. Рассмотрите: увеличение дохода, сокращение расходов или изменение параметров цели.")
+            insights.append("Consider extending the deadline or reducing the target amount.")
         elif risk_level == 'medium':
-            insights.append("📈 Средний уровень риска. Создайте подушку безопасности на непредвиденные расходы.")
-        
-        # Совет по дополнительному доходу
-        if probability < 0.6 and avg_income > 0:
-            needed_extra = recommended_savings - monthly_surplus
-            if needed_extra > 0:
-                insights.append(f"💰 Рассмотрите дополнительный источник дохода на {needed_extra:,.0f} ₸/месяц.")
-        
-        # Прогресс к цели
-        progress = (current_savings / target_amount * 100) if target_amount > 0 else 0
-        if progress >= 50:
-            insights.append(f"🎉 Вы уже прошли {progress:.0f}% пути к цели! Не останавливайтесь!")
-        elif progress < 10:
-            insights.append(f"🚀 Начало пути. Важно выработать привычку регулярных накоплений.")
+            insights.append("Stay vigilant about unexpected expenses.")
         
         return insights
     
@@ -290,48 +280,56 @@ class FinancialGoalPredictor:
         avg_income: float,
         avg_expenses: float,
         current_savings: float
-    ) -> Dict:
+    ) -> Dict[str, Any]:
         """
-        Получить рекомендации по постановке финансовых целей.
+        Get general recommendations for setting financial goals.
         
         Args:
-            avg_income: Средний месячный доход
-            avg_expenses: Средние месячные расходы
-            current_savings: Текущие сбережения
-        
+            avg_income: Average monthly income
+            avg_expenses: Average monthly expenses
+            current_savings: Current savings amount
+            
         Returns:
-            Рекомендации по оптимальным параметрам целей
+            Recommendations dictionary
         """
-        monthly_surplus = max(0, avg_income - avg_expenses)
-        savings_rate = monthly_surplus / avg_income if avg_income > 0 else 0
+        monthly_savings_capacity = avg_income - avg_expenses
+        savings_rate = monthly_savings_capacity / avg_income if avg_income > 0 else 0
         
-        # Рекомендуемые суммы целей на разные сроки
         recommendations = {
-            'short_term': {  # 6-12 месяцев
-                'suggested_amount': monthly_surplus * 9,
-                'timeframe': '6-12 месяцев',
-                'examples': ['Отпуск', 'Техника', 'Курсы']
-            },
-            'medium_term': {  # 1-3 года
-                'suggested_amount': monthly_surplus * 24,
-                'timeframe': '1-3 года',
-                'examples': ['Автомобиль', 'Ремонт', 'Свадьба']
-            },
-            'long_term': {  # 3+ года
-                'suggested_amount': monthly_surplus * 48,
-                'timeframe': '3+ года',
-                'examples': ['Квартира', 'Образование детей', 'Пенсия']
-            }
+            'monthly_savings_capacity': monthly_savings_capacity,
+            'savings_rate_percentage': savings_rate * 100,
+            'recommended_emergency_fund': avg_expenses * 6,  # 6 months of expenses
+            'has_emergency_fund': current_savings >= avg_expenses * 3,
+            'suggestions': []
         }
         
-        return {
-            'current_savings_rate': round(savings_rate, 3),
-            'monthly_surplus': round(monthly_surplus, 2),
-            'recommendations': recommendations,
-            'financial_health': 'good' if savings_rate >= 0.2 else 'needs_improvement'
-        }
+        # Generate suggestions
+        if savings_rate < 0.1:
+            recommendations['suggestions'].append(
+                "Try to save at least 10% of your income."
+            )
+        elif savings_rate < 0.2:
+            recommendations['suggestions'].append(
+                "Good start! Try to increase savings to 20% of income."
+            )
+        else:
+            recommendations['suggestions'].append(
+                "Excellent savings rate! You're on track for financial security."
+            )
+        
+        if not recommendations['has_emergency_fund']:
+            recommendations['suggestions'].append(
+                "Priority: Build an emergency fund of 3-6 months of expenses."
+            )
+        
+        if monthly_savings_capacity > 0:
+            recommendations['suggestions'].append(
+                f"You can comfortably save ${monthly_savings_capacity:.2f} per month."
+            )
+        
+        return recommendations
 
 
-# Глобальный инстанс предиктора
+# Create singleton instance
 predictor = FinancialGoalPredictor()
 

@@ -86,37 +86,6 @@ class MLPrediction(BaseModel):
         }
 
 
-class FinancialProfile(BaseModel):
-    """Schema для финансового профиля пользователя."""
-    avg_monthly_income: Decimal
-    avg_monthly_expenses: Decimal
-    current_savings: Decimal
-    expense_volatility: float
-    income_volatility: float
-    transaction_count: int
-    category_breakdown: Dict
-    trend: str
-    analysis_period_months: int
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "avg_monthly_income": 500000,
-                "avg_monthly_expenses": 350000,
-                "current_savings": 2000000,
-                "expense_volatility": 25000,
-                "income_volatility": 10000,
-                "transaction_count": 145,
-                "category_breakdown": {
-                    "purchase": 200000,
-                    "withdrawal": 100000,
-                    "transfer": 50000
-                },
-                "trend": "improving"
-            }
-        }
-
-
 class GoalResponse(BaseModel):
     """Schema для ответа с информацией о цели."""
     id: int
@@ -137,7 +106,6 @@ class GoalResponse(BaseModel):
     
     # Дополнительные поля
     prediction: Optional[MLPrediction] = None
-    financial_profile: Optional[FinancialProfile] = None
     progress_percentage: Optional[float] = None
     
     class Config:
@@ -183,24 +151,23 @@ class GoalListResponse(BaseModel):
 
 class GoalRecommendations(BaseModel):
     """Schema для рекомендаций по целям."""
-    current_savings_rate: float
-    monthly_surplus: Decimal
-    financial_health: str
-    recommendations: Dict
+    monthly_savings_capacity: float
+    savings_rate_percentage: float
+    recommended_emergency_fund: float
+    has_emergency_fund: bool
+    suggestions: List[str]
     
     class Config:
         json_schema_extra = {
             "example": {
-                "current_savings_rate": 0.22,
-                "monthly_surplus": 150000,
-                "financial_health": "good",
-                "recommendations": {
-                    "short_term": {
-                        "suggested_amount": 1350000,
-                        "timeframe": "6-12 месяцев",
-                        "examples": ["Отпуск", "Техника", "Курсы"]
-                    }
-                }
+                "monthly_savings_capacity": 150000,
+                "savings_rate_percentage": 22.5,
+                "recommended_emergency_fund": 2100000,
+                "has_emergency_fund": True,
+                "suggestions": [
+                    "Excellent savings rate! You're on track for financial security.",
+                    "You can comfortably save $150000.00 per month."
+                ]
             }
         }
 

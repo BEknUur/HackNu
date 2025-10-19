@@ -4,8 +4,9 @@ API routes for Financial Goals service.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional
 from database import get_db
+from models.financial_goal import FinancialGoal
 import json
 import logging
 
@@ -16,8 +17,7 @@ from .schemas import (
     GoalResponse,
     GoalListResponse,
     GoalRecommendations,
-    MLPrediction,
-    FinancialProfile
+    MLPrediction
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,42 @@ router = APIRouter(prefix="/financial-goals", tags=["Financial Goals"])
 def get_current_user_id(user_id: int = Query(1, description="User ID (temporary)")):
     """Временная функция для получения ID пользователя."""
     return user_id
+
+
+def _enrich_goal_response(goal: FinancialGoal) -> GoalResponse:
+    """
+    Обогатить объект цели дополнительными данными для ответа.
+    
+    Args:
+        goal: Объект финансовой цели из БД
+    
+    Returns:
+        Обогащенный GoalResponse с прогрессом и предсказанием
+    """
+    response = GoalResponse.model_validate(goal)
+    
+    # Добавляем прогресс
+    response.progress_percentage = (
+        float(goal.current_savings) / float(goal.target_amount) * 100
+        if goal.target_amount > 0 else 0
+    )
+    
+    # Парсим инсайты если есть
+    if goal.ai_insights:
+        try:
+            insights = json.loads(goal.ai_insights)
+            response.prediction = MLPrediction(
+                probability=goal.predicted_probability or 0.0,
+                recommended_monthly_savings=goal.recommended_monthly_savings or 0,
+                can_achieve=goal.predicted_probability >= 0.5 if goal.predicted_probability else False,
+                risk_level=goal.risk_level or 'medium',
+                insights=insights,
+                scenarios={}
+            )
+        except json.JSONDecodeError:
+            logger.warning(f"Failed to parse ai_insights for goal {goal.id}")
+    
+    return response
 
 
 @router.post("/", response_model=GoalResponse, status_code=status.HTTP_201_CREATED)
@@ -50,17 +86,11 @@ async def create_financial_goal(
     try:
         goal_obj, prediction = FinancialGoalService.create_goal(db, user_id, goal)
         
-        # Преобразуем в response схему
-        response = GoalResponse.model_validate(goal_obj)
+        # Преобразуем в response схему с обогащением
+        response = _enrich_goal_response(goal_obj)
         
-        # Добавляем предсказание
+        # Обновляем предсказание из ML модели
         response.prediction = MLPrediction(**prediction)
-        
-        # Рассчитываем прогресс
-        response.progress_percentage = (
-            float(goal_obj.current_savings) / float(goal_obj.target_amount) * 100
-            if goal_obj.target_amount > 0 else 0
-        )
         
         return response
         
@@ -90,33 +120,8 @@ async def get_user_goals(
             db, user_id, status=status_filter, skip=skip, limit=limit
         )
         
-        # Преобразуем в response
-        goals_response = []
-        for goal in goals:
-            goal_data = GoalResponse.model_validate(goal)
-            
-            # Добавляем прогресс
-            goal_data.progress_percentage = (
-                float(goal.current_savings) / float(goal.target_amount) * 100
-                if goal.target_amount > 0 else 0
-            )
-            
-            # Парсим инсайты если есть
-            if goal.ai_insights:
-                try:
-                    insights = json.loads(goal.ai_insights)
-                    goal_data.prediction = MLPrediction(
-                        probability=goal.predicted_probability or 0.0,
-                        recommended_monthly_savings=goal.recommended_monthly_savings or 0,
-                        can_achieve=goal.predicted_probability >= 0.5 if goal.predicted_probability else False,
-                        risk_level=goal.risk_level or 'medium',
-                        insights=insights,
-                        scenarios={}
-                    )
-                except:
-                    pass
-            
-            goals_response.append(goal_data)
+        # Преобразуем в response с обогащением
+        goals_response = [_enrich_goal_response(goal) for goal in goals]
         
         # Статистика
         all_goals = FinancialGoalService.get_user_goals(db, user_id)
@@ -156,30 +161,7 @@ async def get_goal(
                 detail=f"Goal with id {goal_id} not found"
             )
         
-        response = GoalResponse.model_validate(goal)
-        
-        # Добавляем прогресс
-        response.progress_percentage = (
-            float(goal.current_savings) / float(goal.target_amount) * 100
-            if goal.target_amount > 0 else 0
-        )
-        
-        # Парсим инсайты
-        if goal.ai_insights:
-            try:
-                insights = json.loads(goal.ai_insights)
-                response.prediction = MLPrediction(
-                    probability=goal.predicted_probability or 0.0,
-                    recommended_monthly_savings=goal.recommended_monthly_savings or 0,
-                    can_achieve=goal.predicted_probability >= 0.5 if goal.predicted_probability else False,
-                    risk_level=goal.risk_level or 'medium',
-                    insights=insights,
-                    scenarios={}
-                )
-            except:
-                pass
-        
-        return response
+        return _enrich_goal_response(goal)
         
     except HTTPException:
         raise
@@ -213,13 +195,7 @@ async def update_goal(
                 detail=f"Goal with id {goal_id} not found"
             )
         
-        response = GoalResponse.model_validate(goal)
-        response.progress_percentage = (
-            float(goal.current_savings) / float(goal.target_amount) * 100
-            if goal.target_amount > 0 else 0
-        )
-        
-        return response
+        return _enrich_goal_response(goal)
         
     except HTTPException:
         raise
@@ -319,13 +295,7 @@ async def update_goal_progress(
                 detail=f"Goal with id {goal_id} not found"
             )
         
-        response = GoalResponse.model_validate(goal)
-        response.progress_percentage = (
-            float(goal.current_savings) / float(goal.target_amount) * 100
-            if goal.target_amount > 0 else 0
-        )
-        
-        return response
+        return _enrich_goal_response(goal)
         
     except HTTPException:
         raise
@@ -396,4 +366,6 @@ async def get_goal_recommendations(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get recommendations: {str(e)}"
         )
+
+
 
