@@ -9,7 +9,7 @@ import Constants from 'expo-constants';
 /**
  * Backend server URL (fallback for mobile/development)
  */
-export const BACKEND_SERVER = '/' as const;
+export const BACKEND_SERVER = 'https://46.101.175.118:8000' as const;
 
 /**
  * Get backend API URL
