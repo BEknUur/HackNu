@@ -89,7 +89,7 @@ export default function ExploreScreen() {
       error: null
     }));
 
-    try:
+    try{
       // Get token and user from localStorage
       const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
       const userJson = typeof localStorage !== 'undefined' ? localStorage.getItem('user') : null;
