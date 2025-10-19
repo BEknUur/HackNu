@@ -40,14 +40,28 @@ export default function LoginScreen() {
     setShowCamera(false);
   }
 
-  async function saveUserSession(userData: UserData) {
+  async function saveUserSession(userData: UserData | any) {
     try {
       if (!userData) {
         console.error('No user data provided');
         return;
       }
       
-      const userJson = JSON.stringify(userData);
+      // Normalize user data - handle both 'id' and 'user_id' formats
+      const normalizedUser = {
+        id: userData.id || userData.user_id,
+        name: userData.name,
+        surname: userData.surname,
+        email: userData.email,
+        phone: userData.phone,
+        avatar: userData.avatar,
+        created_at: userData.created_at || new Date().toISOString(),
+        updated_at: userData.updated_at || new Date().toISOString(),
+      };
+      
+      console.log('Saving normalized user to localStorage:', normalizedUser);
+      
+      const userJson = JSON.stringify(normalizedUser);
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('user', userJson);
       }
