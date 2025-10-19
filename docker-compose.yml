@@ -13,6 +13,15 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+  frontend:
+    build:
+      context: .
+      dockerfile: dockerfiles/frontend.Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
   postgres:
     image: postgres:15
     ports:
@@ -26,5 +35,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
 volumes:
   database_data:
