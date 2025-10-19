@@ -7,16 +7,15 @@ from decimal import Decimal
 class TransactionBase(BaseModel):
     """Base schema for transaction"""
     amount: Decimal = Field(..., gt=0, description="Transaction amount (must be positive)")
-    currency: str = Field(..., description="Currency code: 'USD', 'EUR', 'KZT'")
+    currency: str = Field(..., description="Currency code: 'KZT'")
     description: Optional[str] = Field(None, max_length=500, description="Transaction description")
     
     @field_validator('currency')
     @classmethod
     def validate_currency(cls, v: str) -> str:
-        allowed_currencies = ['USD', 'EUR', 'KZT']
         v = v.upper()
-        if v not in allowed_currencies:
-            raise ValueError(f"Currency must be one of: {', '.join(allowed_currencies)}")
+        if v != 'KZT':
+            raise ValueError("Currency must be 'KZT'")
         return v
 
 

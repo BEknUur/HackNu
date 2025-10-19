@@ -9,7 +9,7 @@ class AccountCreate(BaseModel):
     user_id: int = Field(..., gt=0, description="User ID who owns the account")
     account_type: str = Field(..., description="Account type: 'checking', 'savings', 'credit'")
     balance: Optional[Decimal] = Field(default=Decimal('0.00'), ge=0, description="Initial account balance")
-    currency: str = Field(default='USD', description="Currency code: 'USD', 'EUR', 'KZT'")
+    currency: str = Field(default='KZT', description="Currency code: 'KZT'")
     
     @field_validator('account_type')
     @classmethod
@@ -22,10 +22,9 @@ class AccountCreate(BaseModel):
     @field_validator('currency')
     @classmethod
     def validate_currency(cls, v: str) -> str:
-        allowed_currencies = ['USD', 'EUR', 'KZT']
         v = v.upper()
-        if v not in allowed_currencies:
-            raise ValueError(f"Currency must be one of: {', '.join(allowed_currencies)}")
+        if v != 'KZT':
+            raise ValueError("Currency must be 'KZT'")
         return v
 
 
@@ -33,7 +32,7 @@ class AccountUpdate(BaseModel):
     """Schema for updating an existing account"""
     account_type: Optional[str] = Field(None, description="Account type: 'checking', 'savings', 'credit'")
     balance: Optional[Decimal] = Field(None, ge=0, description="Account balance")
-    currency: Optional[str] = Field(None, description="Currency code: 'USD', 'EUR', 'KZT'")
+    currency: Optional[str] = Field(None, description="Currency code: 'KZT'")
     status: Optional[str] = Field(None, description="Account status: 'active', 'blocked', 'closed'")
     
     @field_validator('account_type')
@@ -49,10 +48,9 @@ class AccountUpdate(BaseModel):
     @classmethod
     def validate_currency(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:
-            allowed_currencies = ['USD', 'EUR', 'KZT']
             v = v.upper()
-            if v not in allowed_currencies:
-                raise ValueError(f"Currency must be one of: {', '.join(allowed_currencies)}")
+            if v != 'KZT':
+                raise ValueError("Currency must be 'KZT'")
         return v
     
     @field_validator('status')

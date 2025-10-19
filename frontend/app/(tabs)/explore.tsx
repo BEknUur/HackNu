@@ -89,12 +89,23 @@ export default function ExploreScreen() {
       error: null
     }));
 
-    try {
-      // Get token from localStorage
+    try:
+      // Get token and user from localStorage
       const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+      const userJson = typeof localStorage !== 'undefined' ? localStorage.getItem('user') : null;
       
-      // Call RAG API
-      const response = await fetch(`${config.backendURL}${config.endpoints.rag.live.query}`, {
+      let userId = 1; // Default user ID
+      if (userJson) {
+        try {
+          const user = JSON.parse(userJson);
+          userId = user.id || 1;
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
+        }
+      }
+      
+      // Call RAG Transaction API (has access to account tools)
+      const response = await fetch(`${config.backendURL}/api/rag/transaction/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,12 +113,14 @@ export default function ExploreScreen() {
         },
         body: JSON.stringify({
           query: userMessage.content,
-          session_id: sessionId,
-          user_id: 'user',
-          context: {}
+          user_id: userId,  // Use actual user ID from localStorage
+          context: {
+            session_id: sessionId,
+          },
+          environment: 'production'
         })
       });
-
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

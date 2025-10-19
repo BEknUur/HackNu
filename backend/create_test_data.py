@@ -63,14 +63,6 @@ def create_test_accounts(db, user_id):
             currency="KZT",
             status="active",
             created_at=datetime.now() - timedelta(days=200)
-        ),
-        Account(
-            user_id=user_id,
-            account_type="checking",
-            balance=Decimal("2500.00"),
-            currency="USD",
-            status="active",
-            created_at=datetime.now() - timedelta(days=150)
         )
     ]
     
@@ -93,7 +85,7 @@ def create_test_transactions(db, user_id, accounts):
         print(f"✓ Transactions already exist: {len(existing_txns)} transactions")
         return existing_txns
     
-    checking_account = next(acc for acc in accounts if acc.account_type == "checking" and acc.currency == "KZT")
+    checking_account = next(acc for acc in accounts if acc.account_type == "checking")
     savings_account = next(acc for acc in accounts if acc.account_type == "savings")
     
     transactions = []

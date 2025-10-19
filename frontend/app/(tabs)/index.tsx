@@ -82,6 +82,13 @@ export default function HomeScreen() {
       bgColor: ZamanColors.cloud
     },
     {
+      title: 'Financial Analysis',
+      description: 'AI-powered insights',
+      icon: 'analytics',
+      href: '/financial-analysis' as const,
+      bgColor: ZamanColors.cloud
+    },
+    {
       title: 'Explore',
       description: 'Discover new features',
       icon: 'compass',
@@ -229,10 +236,11 @@ const styles = StyleSheet.create({
   },
   quickActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
   },
   featureCard: {
-    flex: 1,
+    width: '47%',
     backgroundColor: ZamanColors.white,
     borderWidth: 1,
     borderColor: ZamanColors.gray[300],
