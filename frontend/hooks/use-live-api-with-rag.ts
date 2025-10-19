@@ -130,6 +130,20 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
                 }
               },
               {
+                name: "rag_query",
+                description: "Send any user question to backend RAG and return the answer.",
+                parameters: {
+                  type: "object" as any,
+                  properties: {
+                    query: {
+                      type: "string" as any,
+                      description: "Full user request text to process via backend RAG"
+                    }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
                 name: "transfer_money",
                 description: "IMMEDIATELY transfer money between accounts. Call this function when user says 'send money', 'transfer', or similar.",
                 parameters: {
@@ -339,6 +353,8 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
             } else if (name === "vector_search") {
               naturalQuery = args.query;
             } else if (name === "web_search") {
+              naturalQuery = args.query;
+            } else if (name === "rag_query") {
               naturalQuery = args.query;
             } else {
               naturalQuery = args.query || `Execute ${name} with parameters`;
