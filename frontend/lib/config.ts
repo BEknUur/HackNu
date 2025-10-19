@@ -7,19 +7,22 @@
 import Constants from 'expo-constants';
 
 /**
- * Backend server URL
- * For production (web), use relative path so requests go through nginx reverse proxy
- * For development (mobile), use full URL
+ * Backend server URL (fallback for mobile/development)
  */
-export const BACKEND_SERVER = (typeof window !== 'undefined' && window.location.protocol === 'https:') 
-  ? '' // Empty string for relative paths in production HTTPS
-  : 'http://46.101.175.118:8000' as const;
+export const BACKEND_SERVER = '/' as const;
 
 /**
  * Get backend API URL
  */
 export function getBackendURL(): string {
-  // Priority order:
+  // For web in production with HTTPS, use relative paths (empty string)
+  // This allows nginx reverse proxy to handle API requests
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    console.log('[Config] Backend URL: (relative path via nginx proxy)');
+    return ''; // Empty string for relative paths
+  }
+  
+  // Priority order for other environments:
   // 1. Environment variable (from .env file)
   // 2. Expo config extra (from app.json)
   // 3. Default server URL
