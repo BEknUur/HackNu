@@ -64,7 +64,7 @@ def get_transaction_context():
 def deposit_money(
     account_id: int,
     amount: float,
-    currency: str = "USD",
+    currency: str = "KZT",
     description: Optional[str] = None
 ) -> str:
     """
@@ -75,16 +75,16 @@ def deposit_money(
     Args:
         account_id: The ID of the account to deposit money into (required)
         amount: The amount of money to deposit (must be positive, required)
-        currency: The currency code - 'USD', 'EUR', or 'KZT' (default: 'USD')
+        currency: The currency code - only 'KZT' is supported (default: 'KZT')
         description: Optional description of the deposit
         
     Returns:
         A success message with transaction details or an error message
         
     Examples:
-        - "Deposit $500 to account 1"
-        - "Add 1000 KZT to my account 2"
-        - "Deposit 100 euros to account 3 for salary"
+        - "Deposit 50000 KZT to account 1"
+        - "Add 100000 KZT to my account 2"
+        - "Deposit 450000 KZT to account 3 for salary"
     """
     try:
         context = get_transaction_context()
@@ -124,7 +124,7 @@ Description: {description or 'Deposit via AI assistant'}"""
 def withdraw_money(
     account_id: int,
     amount: float,
-    currency: str = "USD",
+    currency: str = "KZT",
     description: Optional[str] = None
 ) -> str:
     """
@@ -135,16 +135,16 @@ def withdraw_money(
     Args:
         account_id: The ID of the account to withdraw money from (required)
         amount: The amount of money to withdraw (must be positive, required)
-        currency: The currency code - 'USD', 'EUR', or 'KZT' (default: 'USD')
+        currency: The currency code - only 'KZT' is supported (default: 'KZT')
         description: Optional description of the withdrawal
         
     Returns:
         A success message with transaction details or an error message
         
     Examples:
-        - "Withdraw $200 from account 1"
-        - "Take out 500 KZT from my account 2"
-        - "Withdraw 50 euros from account 3"
+        - "Withdraw 20000 KZT from account 1"
+        - "Take out 50000 KZT from my account 2"
+        - "Withdraw 100000 KZT from account 3"
     """
     try:
         context = get_transaction_context()
@@ -185,7 +185,7 @@ def transfer_money(
     from_account_id: int,
     to_account_id: int,
     amount: float,
-    currency: str = "USD",
+    currency: str = "KZT",
     description: Optional[str] = None
 ) -> str:
     """
@@ -197,16 +197,16 @@ def transfer_money(
         from_account_id: The ID of the source account (required)
         to_account_id: The ID of the destination account (required)
         amount: The amount of money to transfer (must be positive, required)
-        currency: The currency code - 'USD', 'EUR', or 'KZT' (default: 'USD')
+        currency: The currency code - only 'KZT' is supported (default: 'KZT')
         description: Optional description of the transfer
         
     Returns:
         A success message with transaction details or an error message
         
     Examples:
-        - "Transfer $100 from account 1 to account 2"
-        - "Send 5000 KZT from my account 3 to account 4"
-        - "Transfer 75 euros from account 1 to account 5 for payment"
+        - "Transfer 100000 KZT from account 1 to account 2"
+        - "Send 50000 KZT from my account 3 to account 4"
+        - "Transfer 75000 KZT from account 1 to account 5 for payment"
     """
     try:
         context = get_transaction_context()
