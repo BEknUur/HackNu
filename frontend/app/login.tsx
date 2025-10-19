@@ -5,37 +5,7 @@ import FaceCamera from '@/components/face-camera';
 import ZamanLogo from '@/components/zaman-logo';
 import { Ionicons } from '@expo/vector-icons';
 import { ZamanColors } from '@/constants/theme';
-import { config } from '@/lib/config';
-
-interface UserData {
-  id: number;
-  name: string;
-  surname: string;
-  email: string;
-  phone: string;
-  avatar?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface FaceVerificationResult {
-  success: boolean;
-  verified: boolean;
-  message: string;
-  user?: {
-    user_id: number;
-    name: string;
-    surname: string;
-    email: string;
-    phone: string;
-    avatar: string;
-  };
-  confidence?: number;
-  distance?: number;
-  threshold?: number;
-  model?: string;
-  error?: string;
-}
+import { loginUser, registerUser, verifyFaceID, type UserData } from '@/lib/api-client';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -70,34 +40,14 @@ export default function LoginScreen() {
     setShowCamera(false);
   }
 
-  async function saveUserSession(userData: UserData | FaceVerificationResult['user']) {
+  async function saveUserSession(userData: UserData) {
     try {
       if (!userData) {
         console.error('No user data provided');
         return;
       }
-
-      // Normalize user data format
-      let normalizedUser: UserData;
       
-      if ('user_id' in userData) {
-        // FaceVerificationResult.user format
-        normalizedUser = {
-          id: userData.user_id,
-          name: userData.name,
-          surname: userData.surname,
-          email: userData.email,
-          phone: userData.phone,
-          avatar: userData.avatar,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-      } else {
-        // UserData format (already normalized)
-        normalizedUser = userData as UserData;
-      }
-      
-      const userJson = JSON.stringify(normalizedUser);
+      const userJson = JSON.stringify(userData);
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('user', userJson);
       }
@@ -113,7 +63,7 @@ export default function LoginScreen() {
 
   async function handleFaceVerify() {
     if (!capturedPhoto) {
-      Alert.alert('Error', 'Please capture a photo first');
+      Alert.alert('❌ Error', 'Please capture a photo first');
       return;
     }
 
@@ -128,7 +78,6 @@ export default function LoginScreen() {
     try {
       console.log('Starting face verification...');
       console.log('Photo URI:', capturedPhoto);
-      console.log('API URL:', `${config.backendURL}/api/faceid/verify`);
       
       // Fetch the photo from the URI
       const response = await fetch(capturedPhoto);
@@ -142,26 +91,9 @@ export default function LoginScreen() {
       if (blob.size === 0) {
         throw new Error('Photo file is empty');
       }
-      
-      const formData = new FormData();
-      // @ts-ignore - FormData accepts blob with filename
-      formData.append('file', blob, 'photo.jpg');
 
       console.log('Sending verification request...');
-      const verifyResponse = await fetch(`${config.backendURL}/api/faceid/verify`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      console.log('Response status:', verifyResponse.status);
-      
-      if (!verifyResponse.ok) {
-        const errorText = await verifyResponse.text();
-        console.error('Server error:', verifyResponse.status, errorText);
-        throw new Error(`Server error: ${verifyResponse.status}`);
-      }
-
-      const result: FaceVerificationResult = await verifyResponse.json();
+      const result = await verifyFaceID(blob);
       console.log('Verification result:', result);
 
       if (result.success && result.verified && result.user) {
@@ -197,18 +129,12 @@ export default function LoginScreen() {
     } catch (error: any) {
       console.error('Error during face verification:', error);
       
-      let errorMessage = 'Could not connect to the server. Please check your internet connection and try again.';
+      let errorMessage = error.message || 'Could not connect to the server. Please check your internet connection and try again.';
       
-      if (error.message) {
-        if (error.message.includes('Network request failed')) {
-          errorMessage = 'Network error: Cannot reach the server. Please check if the server is running and your internet connection is active.';
-        } else if (error.message.includes('Failed to load photo')) {
-          errorMessage = 'Failed to load the captured photo. Please try taking the photo again.';
-        } else if (error.message.includes('Photo file is empty')) {
-          errorMessage = 'The captured photo is empty. Please try taking the photo again.';
-        } else if (error.message.includes('Server error')) {
-          errorMessage = 'Server error occurred. Please try again or contact support if the issue persists.';
-        }
+      if (error.message?.includes('Failed to load photo')) {
+        errorMessage = 'Failed to load the captured photo. Please try taking the photo again.';
+      } else if (error.message?.includes('Photo file is empty')) {
+        errorMessage = 'The captured photo is empty. Please try taking the photo again.';
       }
       
       Alert.alert(
@@ -236,48 +162,25 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const loginResponse = await fetch(`${config.backendURL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password: password,
-        }),
+      const userData = await loginUser({
+        email: email.trim(),
+        password: password,
       });
-
-      if (loginResponse.ok) {
-        const userData: UserData = await loginResponse.json();
-        
-        // Save session
-        await saveUserSession(userData);
-        
-        console.log('Email/password login successful, redirecting...');
-        
-        // Redirect immediately without Alert
-        router.replace('/(tabs)');
-      } else {
-        const errorData = await loginResponse.json();
-        console.error('Login error:', loginResponse.status, errorData);
-        
-        let errorMessage = 'Login failed. Please try again.';
-        
-        if (loginResponse.status === 401) {
-          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-        } else if (errorData.detail) {
-          errorMessage = typeof errorData.detail === 'string' ? errorData.detail : 'Login failed';
-        }
-        
-        Alert.alert('❌ Login Failed', errorMessage);
-      }
-    } catch (error) {
+      
+      // Save session
+      await saveUserSession(userData);
+      
+      console.log('Email/password login successful, redirecting...');
+      
+      // Redirect immediately without Alert
+      router.replace('/(tabs)');
+      
+    } catch (error: any) {
       console.error('Error during login:', error);
-      Alert.alert(
-        '🔌 Connection Error',
-        'Could not connect to the server. Please check your internet connection and try again.',
-        [{ text: 'OK' }]
-      );
+      
+      const errorMessage = error.message || 'Login failed. Please try again.';
+      Alert.alert('❌ Login Failed', errorMessage, [{ text: 'OK' }]);
+      
     } finally {
       setIsLoading(false);
     }
@@ -308,70 +211,40 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('name', name.trim());
-      formData.append('surname', surname.trim());
-      formData.append('email', email.trim().toLowerCase());
-      formData.append('phone', phone.trim());
-      formData.append('password', password);
-
-      // Add avatar
+      // Fetch the photo from URI and convert to blob
       const response = await fetch(capturedPhoto);
-      const blob = await response.blob();
-      // @ts-ignore - FormData accepts blob with filename
-      formData.append('avatar', blob, 'avatar.jpg');
-
-      const registerResponse = await fetch(`${config.backendURL}/api/auth/register`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (registerResponse.ok) {
-        const userData: UserData = await registerResponse.json();
-        
-        // Clear captured photo to prevent re-triggering
-        setCapturedPhoto(null);
-        
-        // Save session
-        await saveUserSession(userData);
-        
-        console.log('Registration successful, redirecting...');
-        
-        // Redirect immediately without Alert
-        router.replace('/(tabs)');
-      } else {
-        const errorData = await registerResponse.json();
-        console.error('Registration error:', registerResponse.status, errorData);
-        
-        let errorMessage = 'Could not register. Please try again.';
-        
-        if (registerResponse.status === 400) {
-          if (errorData.detail?.includes('Email')) {
-            errorMessage = 'This email is already registered. Please use a different email or try logging in.';
-          } else if (errorData.detail?.includes('Phone')) {
-            errorMessage = 'This phone number is already registered. Please use a different number.';
-          } else {
-            errorMessage = errorData.detail || 'This email or phone number is already registered.';
-          }
-        } else if (registerResponse.status === 422) {
-          if (typeof errorData.detail === 'string') {
-            errorMessage = errorData.detail;
-          } else if (Array.isArray(errorData.detail)) {
-            errorMessage = errorData.detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join('\n');
-          }
-        } else if (errorData.detail) {
-          errorMessage = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
-        }
-        
-        Alert.alert('❌ Registration Failed', errorMessage);
+      if (!response.ok) {
+        throw new Error('Failed to load captured photo');
       }
-    } catch (error) {
+      const blob = await response.blob();
+
+      // Register user
+      const userData = await registerUser({
+        name: name.trim(),
+        surname: surname.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        password: password,
+        avatar: blob,
+      });
+      
+      // Clear captured photo to prevent re-triggering
+      setCapturedPhoto(null);
+      
+      // Save session
+      await saveUserSession(userData);
+      
+      console.log('Registration successful, redirecting...');
+      
+      // Redirect immediately without Alert
+      router.replace('/(tabs)');
+      
+    } catch (error: any) {
       console.error('Error during registration:', error);
-      Alert.alert(
-        '🔌 Connection Error',
-        'Could not connect to the server. Please check your internet connection and try again.',
-        [{ text: 'OK' }]
-      );
+      
+      const errorMessage = error.message || 'Registration failed. Please try again.';
+      Alert.alert('❌ Registration Failed', errorMessage, [{ text: 'OK' }]);
+      
     } finally {
       setIsLoading(false);
     }

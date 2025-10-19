@@ -56,7 +56,34 @@ export interface TransactionTransferRequest {
 }
 
 export interface ApiError {
-  detail: string;
+  detail: string | any[];
+  message?: string;
+  errors?: any[];
+}
+
+export interface UserData {
+  id: number;
+  name: string;
+  surname: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  name: string;
+  surname: string;
+  email: string;
+  phone: string;
+  password: string;
+  avatar?: File | Blob;
 }
 
 export interface AccountCreate {
@@ -163,7 +190,8 @@ export async function getUserAccounts(userId: number): Promise<Account[]> {
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to fetch accounts');
+    const errorMsg = typeof error.detail === 'string' ? error.detail : 'Failed to fetch accounts';
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -186,7 +214,8 @@ export async function createAccount(data: AccountCreate): Promise<Account> {
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to create account');
+    const errorMsg = typeof error.detail === 'string' ? error.detail : 'Failed to create account';
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -228,7 +257,8 @@ export async function getUserTransactions(
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to fetch transactions');
+    const errorMsg = typeof error.detail === 'string' ? error.detail : 'Failed to fetch transactions';
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -254,7 +284,8 @@ export async function createDeposit(
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to create deposit');
+    const errorMsg = typeof error.detail === 'string' ? error.detail : 'Failed to create deposit';
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -280,7 +311,8 @@ export async function createWithdrawal(
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to create withdrawal');
+    const errorMsg = typeof error.detail === 'string' ? error.detail : 'Failed to create withdrawal';
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -306,7 +338,8 @@ export async function createTransfer(
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to create transfer');
+    const errorMsg = typeof error.detail === 'string' ? error.detail : 'Failed to create transfer';
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -340,9 +373,201 @@ export async function getFinancialAnalysis(
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || 'Failed to fetch financial analysis');
+    const errorMsg = typeof error.detail === 'string' ? error.detail : 'Failed to fetch financial analysis';
+    throw new Error(errorMsg);
   }
 
   return response.json();
+}
+
+/**
+ * Parse API error response into user-friendly message
+ */
+function parseErrorMessage(error: ApiError, statusCode: number): string {
+  if (typeof error.detail === 'string') {
+    return error.detail;
+  }
+  
+  if (Array.isArray(error.detail)) {
+    return error.detail
+      .map((e: any) => e.msg || e.message || JSON.stringify(e))
+      .join('\n');
+  }
+  
+  if (error.message) {
+    return error.message;
+  }
+  
+  // Default messages by status code
+  switch (statusCode) {
+    case 400:
+      return 'Invalid request. Please check your input.';
+    case 401:
+      return 'Invalid email or password.';
+    case 403:
+      return 'Access denied.';
+    case 404:
+      return 'Resource not found.';
+    case 422:
+      return 'Validation error. Please check your input.';
+    case 500:
+      return 'Server error. Please try again later.';
+    default:
+      return 'An unexpected error occurred.';
+  }
+}
+
+/**
+ * Login with email and password
+ */
+export async function loginUser(credentials: LoginRequest): Promise<UserData> {
+  try {
+    const url = `${config.backendURL}/api/auth/login`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        email: credentials.email.trim().toLowerCase(),
+        password: credentials.password,
+      }),
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json().catch(() => ({ 
+        detail: 'Failed to connect to server' 
+      }));
+      
+      throw new Error(parseErrorMessage(error, response.status));
+    }
+
+    const userData: UserData = await response.json();
+    return userData;
+    
+  } catch (error: any) {
+    // Re-throw with better context
+    if (error.message) {
+      throw error;
+    }
+    
+    if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+      throw new Error('Network error: Cannot connect to server. Please check your internet connection.');
+    }
+    
+    throw new Error('Login failed. Please try again.');
+  }
+}
+
+/**
+ * Register a new user with avatar
+ */
+export async function registerUser(data: RegisterRequest): Promise<UserData> {
+  try {
+    const url = `${config.backendURL}/api/auth/register`;
+    
+    const formData = new FormData();
+    formData.append('name', data.name.trim());
+    formData.append('surname', data.surname.trim());
+    formData.append('email', data.email.trim().toLowerCase());
+    formData.append('phone', data.phone.trim());
+    formData.append('password', data.password);
+    
+    if (data.avatar) {
+      // @ts-ignore - FormData accepts blob with filename
+      formData.append('avatar', data.avatar, 'avatar.jpg');
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json().catch(() => ({ 
+        detail: 'Failed to connect to server' 
+      }));
+      
+      let errorMessage = parseErrorMessage(error, response.status);
+      
+      // Specific handling for registration errors
+      if (response.status === 400) {
+        if (typeof error.detail === 'string') {
+          if (error.detail.toLowerCase().includes('email')) {
+            errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+          } else if (error.detail.toLowerCase().includes('phone')) {
+            errorMessage = 'This phone number is already registered. Please use a different number.';
+          }
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const userData: UserData = await response.json();
+    return userData;
+    
+  } catch (error: any) {
+    // Re-throw with better context
+    if (error.message) {
+      throw error;
+    }
+    
+    if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+      throw new Error('Network error: Cannot connect to server. Please check your internet connection.');
+    }
+    
+    throw new Error('Registration failed. Please try again.');
+  }
+}
+
+/**
+ * Verify face ID
+ */
+export async function verifyFaceID(photoBlob: Blob): Promise<{
+  success: boolean;
+  verified: boolean;
+  message: string;
+  user?: UserData;
+  confidence?: number;
+  distance?: number;
+  error?: string;
+}> {
+  try {
+    const url = `${config.backendURL}/api/faceid/verify`;
+    
+    const formData = new FormData();
+    // @ts-ignore - FormData accepts blob with filename
+    formData.append('file', photoBlob, 'photo.jpg');
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json().catch(() => ({ 
+        detail: 'Face verification failed' 
+      }));
+      
+      throw new Error(parseErrorMessage(error, response.status));
+    }
+
+    return response.json();
+    
+  } catch (error: any) {
+    // Re-throw with better context
+    if (error.message) {
+      throw error;
+    }
+    
+    if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+      throw new Error('Network error: Cannot connect to server. Please check your internet connection.');
+    }
+    
+    throw new Error('Face verification failed. Please try again.');
+  }
 }
 
