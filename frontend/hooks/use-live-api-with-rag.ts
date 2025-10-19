@@ -74,7 +74,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
     };
   }, []);
 
-  // Enhanced setConfig - ONE tool that sends to Supervisor Agent
+  // Enhanced setConfig that adds RAG tool declarations
   const setConfigWithRAG = useCallback((newConfig: LiveConnectConfig) => {
     // Create a stable config string to prevent infinite loops
     const configString = JSON.stringify(newConfig);
@@ -87,22 +87,35 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
     lastConfigRef.current = configString;
 
     if (ragToolsEnabled && ragToolsHealthy) {
-      // Declare ONE tool that sends queries to the Supervisor Agent
-      // The Supervisor will then decide which specific tools (vector_search, web_search, etc.) to use
+      // Add RAG function declarations to the config
       const ragConfig: LiveConnectConfig = {
         ...newConfig,
         tools: [
           {
             functionDeclarations: [
               {
-                name: "query_knowledge_system",
-                description: "Search and retrieve information from Zaman Bank's knowledge base, company documents, policies, and the web. Use this for ANY question about company information, banking services, policies, procedures, or general knowledge. The backend AI supervisor will automatically determine the best sources to use.",
+                name: "vector_search",
+                description: "Search company internal documents, policies, and knowledge base. Use this for questions about company information, internal procedures, policies, or any company-specific knowledge.",
                 parameters: {
                   type: "object" as any,
                   properties: {
                     query: {
                       type: "string" as any,
-                      description: "The user's question or query"
+                      description: "The search query to find relevant information from company documents"
+                    }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                name: "web_search",
+                description: "Search the web for current information, news, and general knowledge. Use this for questions about current events, real-time information, or general topics not in company documents.",
+                parameters: {
+                  type: "object" as any,
+                  properties: {
+                    query: {
+                      type: "string" as any,
+                      description: "The search query to find information on the web"
                     }
                   },
                   required: ["query"]
@@ -113,7 +126,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
         ]
       };
       liveAPI.setConfig(ragConfig);
-      console.log('[RAG] Config updated - Supervisor Agent enabled via query_knowledge_system tool');
+      console.log('[RAG] Config updated with RAG tools');
     } else {
       liveAPI.setConfig(newConfig);
       console.log('[RAG] Config updated without RAG tools');
@@ -136,10 +149,9 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
 
         for (const fc of functionCalls) {
           const { name, args, id } = fc;
-          console.log(`[RAG] Gemini called tool: ${name}`, args);
-          console.log(`[RAG] Sending query to Supervisor Agent`);
+          console.log(`[RAG] Executing tool: ${name}`, args);
 
-          // Call the backend RAG API - Supervisor Agent will decide which tools to use
+          // Call the backend RAG API
           const response = await fetch(
             `${config.backendURL}${config.endpoints.rag.live.query}`,
             {
@@ -150,8 +162,8 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               body: JSON.stringify({
                 query: args.query,
                 context: {
+                  tool_name: name,
                   session_id: Date.now().toString(),
-                  // NO tool_name - let Supervisor decide!
                 }
               }),
             }
@@ -159,8 +171,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
 
           if (response.ok) {
             const data = await response.json();
-            console.log(`[RAG] Supervisor response:`, data);
-            console.log(`[RAG] Tools used by Supervisor:`, data.agents_used);
+            console.log(`[RAG] Tool ${name} response:`, data);
 
             functionResponses.push({
               id,
@@ -173,12 +184,12 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               }
             });
           } else {
-            console.error(`[RAG] Supervisor query failed:`, response.status);
+            console.error(`[RAG] Tool ${name} failed:`, response.status);
             functionResponses.push({
               id,
               name,
               response: {
-                error: `Failed to execute query: ${response.statusText}`
+                error: `Failed to execute ${name}: ${response.statusText}`
               }
             });
           }
