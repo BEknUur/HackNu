@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "extra": {
-      "BACKEND_URL": "http://46.101.175.118:8000",
+      "BACKEND_URL": "https://46.101.175.118:8000",
       "GEMINI_API_KEY": "AIzaSyDvPoCG5MQP_9QNujTH7C9XbWKi3Uw6_8c", 
       "GOOGLE_API_KEY": "AIzaSyDvPoCG5MQP_9QNujTH7C9XbWKi3Uw6_8c"
     },
