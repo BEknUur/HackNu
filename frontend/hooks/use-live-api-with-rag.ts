@@ -140,7 +140,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               },
               {
                 name: "transfer_money",
-                description: "Transfer money from one account to another. Use this when user wants to send money to another account or person.",
+                description: "IMMEDIATELY transfer money between accounts. Call this function when user says 'send money', 'transfer', or similar.",
                 parameters: {
                   type: "object" as any,
                   properties: {
@@ -170,7 +170,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               },
               {
                 name: "deposit_money",
-                description: "Deposit money into a user's account. Use this when user wants to add money to their account.",
+                description: "IMMEDIATELY deposit money to account. Call this function when user says 'deposit', 'add money', or similar.",
                 parameters: {
                   type: "object" as any,
                   properties: {
@@ -196,7 +196,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               },
               {
                 name: "withdraw_money",
-                description: "Withdraw money from a user's account. Use this when user wants to take money out of their account.",
+                description: "IMMEDIATELY withdraw money from account. Call this function when user says 'withdraw', 'take out money', or similar.",
                 parameters: {
                   type: "object" as any,
                   properties: {
@@ -222,7 +222,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               },
               {
                 name: "get_my_accounts",
-                description: "Get all accounts belonging to the user with their balances. Use this when user asks about their accounts or wants to see their financial status.",
+                description: "IMMEDIATELY show all user accounts and balances. Call this function when user says 'show accounts', 'my accounts', 'balance', or similar.",
                 parameters: {
                   type: "object" as any,
                   properties: {},
@@ -231,7 +231,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               },
               {
                 name: "get_account_balance",
-                description: "Get the current balance of a specific account. Use this when user asks about balance of a specific account.",
+                description: "IMMEDIATELY get balance of specific account. Call this function when user asks about balance of a particular account.",
                 parameters: {
                   type: "object" as any,
                   properties: {
