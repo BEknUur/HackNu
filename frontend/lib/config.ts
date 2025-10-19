@@ -8,8 +8,12 @@ import Constants from 'expo-constants';
 
 /**
  * Backend server URL
+ * For production (web), use relative path so requests go through nginx reverse proxy
+ * For development (mobile), use full URL
  */
-export const BACKEND_SERVER = 'http://46.101.175.118:8000' as const;
+export const BACKEND_SERVER = (typeof window !== 'undefined' && window.location.protocol === 'https:') 
+  ? '' // Empty string for relative paths in production HTTPS
+  : 'http://46.101.175.118:8000' as const;
 
 /**
  * Get backend API URL
