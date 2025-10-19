@@ -19,6 +19,7 @@ if str(backend_dir) not in sys.path:
 
 from rag_agent.tools.vector_search import get_vector_search_tool, get_vector_store_status
 from rag_agent.tools.web_search import get_web_search_tool, get_web_search_status
+from rag_agent.config.orchestrator import rag_system
 
 logger = logging.getLogger(__name__)
 
@@ -52,102 +53,57 @@ class SupervisorStatus(BaseModel):
 @router.post("/query", response_model=LiveQueryResponse)
 async def live_query(request: LiveQueryRequest):
     """
-    Process a live query from Gemini Live API.
+    Process a live query from Gemini Live API using the Supervisor Agent.
     
-    This endpoint receives queries from the frontend and routes them to the appropriate
-    RAG tool (vector_search or web_search) based on the context.
+    This endpoint receives queries from Gemini Live and processes them through
+    the full RAG system with Supervisor Agent orchestration - exactly like the
+    regular RAG endpoint, ensuring consistent agent logic and decision-making.
     
     Args:
         request: Query request with query text and context
         
     Returns:
-        LiveQueryResponse: Response from the RAG tool
+        LiveQueryResponse: Response from the Supervisor Agent
     """
     try:
-        tool_name = request.context.get("tool_name", "vector_search") if request.context else "vector_search"
         query = request.query
+        logger.info(f"[Live Query] Processing query: {query}")
         
-        logger.info(f"[Live Query] Processing query with tool: {tool_name}")
-        logger.info(f"[Live Query] Query: {query}")
+        # Initialize RAG system if needed
+        if not rag_system.supervisor_agent:
+            logger.info("[Live Query] Initializing RAG system")
+            rag_system.initialize(environment="production")
         
-        response_text = ""
-        sources = []
+        # Prepare context
+        context = request.context or {}
+        
+        # Process query through Supervisor Agent (same as regular RAG)
+        logger.info("[Live Query] Sending to Supervisor Agent")
+        result = rag_system.query(
+            user_query=query,
+            context=context
+        )
+        
+        # Extract agents used from sources
         agents_used = []
-        confidence = 0.0
+        for source in result.get("sources", []):
+            if isinstance(source, dict) and "tool" in source:
+                tool_name = source.get("tool", "")
+                if tool_name and tool_name not in agents_used:
+                    agents_used.append(tool_name)
         
-        # Route to appropriate tool
-        if tool_name == "vector_search":
-            try:
-                vector_tool = get_vector_search_tool()
-                response_text = vector_tool.search(
-                    query=query,
-                    k=3,
-                    use_reranking=True,
-                    use_hyde=True,
-                    use_hybrid=True
-                )
-                agents_used.append("vector_search")
-                
-                # Extract sources from response (if available)
-                # The response contains formatted results with source information
-                if "Result" in response_text:
-                    sources.append({
-                        "type": "internal_documents",
-                        "tool": "vector_search"
-                    })
-                    confidence = 0.85
-                else:
-                    confidence = 0.3
-                    
-            except Exception as e:
-                logger.error(f"[Live Query] Vector search error: {e}")
-                response_text = f"❌ Error performing vector search: {str(e)}\n\nPlease ensure the vector store is initialized."
-                confidence = 0.0
-                
-        elif tool_name == "web_search":
-            try:
-                web_tool = get_web_search_tool()
-                response_text = web_tool.search(
-                    query=query,
-                    max_results=3,
-                    search_depth="advanced"
-                )
-                agents_used.append("web_search")
-                
-                # Extract sources from response
-                if "Web Result" in response_text:
-                    sources.append({
-                        "type": "web_search",
-                        "tool": "web_search"
-                    })
-                    confidence = 0.80
-                else:
-                    confidence = 0.3
-                    
-            except Exception as e:
-                logger.error(f"[Live Query] Web search error: {e}")
-                response_text = f"❌ Error performing web search: {str(e)}\n\nPlease ensure TAVILY_API_KEY is configured."
-                confidence = 0.0
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unknown tool: {tool_name}. Supported tools: vector_search, web_search"
-            )
-        
-        logger.info(f"[Live Query] Response generated with {len(agents_used)} agent(s)")
+        logger.info(f"[Live Query] Supervisor responded. Agents used: {agents_used}")
         
         return LiveQueryResponse(
-            response=response_text,
-            sources=sources,
-            confidence=confidence,
+            response=result["response"],
+            sources=result.get("sources", []),
+            confidence=result.get("confidence", 0.8),
             agents_used=agents_used,
             status="success"
         )
         
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"[Live Query] Unexpected error: {e}", exc_info=True)
+        logger.error(f"[Live Query] Error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error processing live query: {str(e)}"
