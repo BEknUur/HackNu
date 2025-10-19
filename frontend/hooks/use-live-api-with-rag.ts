@@ -258,100 +258,122 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
   // Handle tool calls from Gemini
   useEffect(() => {
     const onToolCall = async (toolCall: any) => {
+      console.log('[RAG] Tool call received:', toolCall);
+      console.log('[RAG] Tools status:', { ragToolsEnabled, ragToolsHealthy });
+      
       if (!ragToolsEnabled || !ragToolsHealthy) {
         console.warn('[RAG] Tool call received but RAG tools are not enabled/healthy');
-        return;
+        // Still try to process the tool call even if health check failed
+        // return;
       }
-
-      console.log('[RAG] Tool call received:', toolCall);
 
       try {
         const functionCalls = toolCall.functionCalls || [];
         const functionResponses = [];
 
+        console.log(`[RAG] Processing ${functionCalls.length} function call(s)`);
+
         for (const fc of functionCalls) {
           const { name, args, id } = fc;
-          console.log(`[RAG] Executing tool: ${name}`, args);
+          console.log(`[RAG] Executing tool: ${name}`, { id, args });
 
-          // Prepare natural language query for the RAG system
-          let naturalQuery = "";
-          
-          // Convert function calls to natural language
-          if (name === "transfer_money") {
-            naturalQuery = `Transfer ${args.amount} ${args.currency || 'KZT'} from account ${args.from_account_id} to account ${args.to_account_id}`;
-            if (args.description) naturalQuery += ` for ${args.description}`;
-          } else if (name === "deposit_money") {
-            naturalQuery = `Deposit ${args.amount} ${args.currency || 'KZT'} to account ${args.account_id}`;
-            if (args.description) naturalQuery += ` for ${args.description}`;
-          } else if (name === "withdraw_money") {
-            naturalQuery = `Withdraw ${args.amount} ${args.currency || 'KZT'} from account ${args.account_id}`;
-            if (args.description) naturalQuery += ` for ${args.description}`;
-          } else if (name === "get_my_accounts") {
-            naturalQuery = "Show me all my accounts with balances";
-          } else if (name === "get_account_balance") {
-            naturalQuery = `What is the balance of account ${args.account_id}?`;
-          } else if (name === "get_account_details") {
-            naturalQuery = `Show me details of account ${args.account_id}`;
-          } else if (name === "vector_search") {
-            naturalQuery = args.query;
-          } else if (name === "web_search") {
-            naturalQuery = args.query;
-          } else {
-            naturalQuery = args.query || `Execute ${name} with parameters`;
-          }
-
-          // Get current user context
-          const userContext = getUserContext();
-          
-          let requestBody: any = {
-            query: naturalQuery,
-            context: {
-              session_id: Date.now().toString(),
-              original_function: name,
-              ...args  // Include all function arguments in context for reference
+          try {
+            // Prepare natural language query for the RAG system
+            let naturalQuery = "";
+            
+            // Convert function calls to natural language
+            if (name === "transfer_money") {
+              naturalQuery = `Transfer ${args.amount} ${args.currency || 'KZT'} from account ${args.from_account_id} to account ${args.to_account_id}`;
+              if (args.description) naturalQuery += ` for ${args.description}`;
+            } else if (name === "deposit_money") {
+              naturalQuery = `Deposit ${args.amount} ${args.currency || 'KZT'} to account ${args.account_id}`;
+              if (args.description) naturalQuery += ` for ${args.description}`;
+            } else if (name === "withdraw_money") {
+              naturalQuery = `Withdraw ${args.amount} ${args.currency || 'KZT'} from account ${args.account_id}`;
+              if (args.description) naturalQuery += ` for ${args.description}`;
+            } else if (name === "get_my_accounts") {
+              naturalQuery = "Show me all my accounts with balances";
+            } else if (name === "get_account_balance") {
+              naturalQuery = `What is the balance of account ${args.account_id}?`;
+            } else if (name === "get_account_details") {
+              naturalQuery = `Show me details of account ${args.account_id}`;
+            } else if (name === "vector_search") {
+              naturalQuery = args.query;
+            } else if (name === "web_search") {
+              naturalQuery = args.query;
+            } else {
+              naturalQuery = args.query || `Execute ${name} with parameters`;
             }
-          };
 
-          // For transaction tools, add authenticated user_id
-          if (['transfer_money', 'deposit_money', 'withdraw_money', 'get_my_accounts', 'get_account_balance', 'get_account_details'].includes(name)) {
-            requestBody.user_id = userContext.userId;
-            console.log(`[RAG] Using authenticated user ID: ${userContext.userId}`);
-          }
+            console.log(`[RAG] Natural query: ${naturalQuery}`);
 
-          // Call the backend RAG API
-          const response = await fetch(
-            `${config.backendURL}${config.endpoints.rag.live.query}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(userContext.token ? { 'Authorization': `Bearer ${userContext.token}` } : {})
-              },
-              body: JSON.stringify(requestBody),
-            }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log(`[RAG] Tool ${name} response:`, data);
-
-            functionResponses.push({
-              id,
-              name,
-              response: {
-                result: data.response,
-                sources: data.sources,
-                confidence: data.confidence,
-                agents_used: data.agents_used,
+            // Get current user context
+            const userContext = getUserContext();
+            
+            let requestBody: any = {
+              query: naturalQuery,
+              context: {
+                session_id: Date.now().toString(),
+                original_function: name,
+                ...args  // Include all function arguments in context for reference
               }
-            });
-          } else {
-            console.error(`[RAG] Tool ${name} failed:`, response.status);
+            };
+
+            // For transaction tools, add authenticated user_id
+            if (['transfer_money', 'deposit_money', 'withdraw_money', 'get_my_accounts', 'get_account_balance', 'get_account_details'].includes(name)) {
+              requestBody.user_id = userContext.userId;
+              console.log(`[RAG] Using authenticated user ID: ${userContext.userId}`);
+            }
+
+            console.log(`[RAG] Sending request:`, requestBody);
+
+            // Call the backend RAG API
+            const response = await fetch(
+              `${config.backendURL}${config.endpoints.rag.live.query}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(userContext.token ? { 'Authorization': `Bearer ${userContext.token}` } : {})
+                },
+                body: JSON.stringify(requestBody),
+              }
+            );
+
+            console.log(`[RAG] Response status: ${response.status}`);
+
+            if (response.ok) {
+              const data = await response.json();
+              console.log(`[RAG] Tool ${name} response:`, data);
+
+              functionResponses.push({
+                id,
+                name,
+                response: {
+                  result: data.response,
+                  sources: data.sources,
+                  confidence: data.confidence,
+                  agents_used: data.agents_used,
+                }
+              });
+            } else {
+              const errorText = await response.text();
+              console.error(`[RAG] Tool ${name} failed:`, response.status, errorText);
+              functionResponses.push({
+                id,
+                name,
+                response: {
+                  error: `Failed to execute ${name}: ${response.status} ${response.statusText}`
+                }
+              });
+            }
+          } catch (toolError) {
+            console.error(`[RAG] Error executing tool ${name}:`, toolError);
             functionResponses.push({
               id,
               name,
               response: {
-                error: `Failed to execute ${name}: ${response.statusText}`
+                error: `Error executing ${name}: ${toolError instanceof Error ? toolError.message : String(toolError)}`
               }
             });
           }
@@ -359,11 +381,18 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
 
         // Send tool responses back to Gemini
         if (functionResponses.length > 0) {
-          liveAPI.client.sendToolResponse({ functionResponses });
-          console.log('[RAG] Tool responses sent:', functionResponses.length);
+          console.log('[RAG] Sending tool responses to Gemini:', functionResponses);
+          try {
+            await liveAPI.client.sendToolResponse({ functionResponses });
+            console.log('[RAG] ✅ Tool responses sent successfully:', functionResponses.length);
+          } catch (sendError) {
+            console.error('[RAG] ❌ Failed to send tool responses:', sendError);
+          }
+        } else {
+          console.warn('[RAG] No function responses to send');
         }
       } catch (error) {
-        console.error('[RAG] Tool execution error:', error);
+        console.error('[RAG] ❌ Tool execution error:', error);
       }
     };
 
