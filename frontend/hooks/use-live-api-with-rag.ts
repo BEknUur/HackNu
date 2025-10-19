@@ -120,6 +120,111 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
                   },
                   required: ["query"]
                 }
+              },
+              {
+                name: "transfer_money",
+                description: "Transfer money from one account to another. Use this when user wants to send money to another account or person.",
+                parameters: {
+                  type: "object" as any,
+                  properties: {
+                    from_account_id: {
+                      type: "number" as any,
+                      description: "The ID of the source account to transfer money from"
+                    },
+                    to_account_id: {
+                      type: "number" as any,
+                      description: "The ID of the destination account to transfer money to"
+                    },
+                    amount: {
+                      type: "number" as any,
+                      description: "The amount of money to transfer (must be positive)"
+                    },
+                    currency: {
+                      type: "string" as any,
+                      description: "The currency code (KZT, USD, EUR). Default is KZT"
+                    },
+                    description: {
+                      type: "string" as any,
+                      description: "Optional description for the transfer"
+                    }
+                  },
+                  required: ["from_account_id", "to_account_id", "amount"]
+                }
+              },
+              {
+                name: "deposit_money",
+                description: "Deposit money into a user's account. Use this when user wants to add money to their account.",
+                parameters: {
+                  type: "object" as any,
+                  properties: {
+                    account_id: {
+                      type: "number" as any,
+                      description: "The ID of the account to deposit money into"
+                    },
+                    amount: {
+                      type: "number" as any,
+                      description: "The amount of money to deposit (must be positive)"
+                    },
+                    currency: {
+                      type: "string" as any,
+                      description: "The currency code (KZT, USD, EUR). Default is KZT"
+                    },
+                    description: {
+                      type: "string" as any,
+                      description: "Optional description for the deposit"
+                    }
+                  },
+                  required: ["account_id", "amount"]
+                }
+              },
+              {
+                name: "withdraw_money",
+                description: "Withdraw money from a user's account. Use this when user wants to take money out of their account.",
+                parameters: {
+                  type: "object" as any,
+                  properties: {
+                    account_id: {
+                      type: "number" as any,
+                      description: "The ID of the account to withdraw money from"
+                    },
+                    amount: {
+                      type: "number" as any,
+                      description: "The amount of money to withdraw (must be positive)"
+                    },
+                    currency: {
+                      type: "string" as any,
+                      description: "The currency code (KZT, USD, EUR). Default is KZT"
+                    },
+                    description: {
+                      type: "string" as any,
+                      description: "Optional description for the withdrawal"
+                    }
+                  },
+                  required: ["account_id", "amount"]
+                }
+              },
+              {
+                name: "get_my_accounts",
+                description: "Get all accounts belonging to the user with their balances. Use this when user asks about their accounts or wants to see their financial status.",
+                parameters: {
+                  type: "object" as any,
+                  properties: {},
+                  required: []
+                }
+              },
+              {
+                name: "get_account_balance",
+                description: "Get the current balance of a specific account. Use this when user asks about balance of a specific account.",
+                parameters: {
+                  type: "object" as any,
+                  properties: {
+                    account_id: {
+                      type: "number" as any,
+                      description: "The ID of the account to check balance for"
+                    }
+                  },
+                  required: ["account_id"]
+                }
               }
             ]
           }
@@ -151,6 +256,22 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
           const { name, args, id } = fc;
           console.log(`[RAG] Executing tool: ${name}`, args);
 
+          // Prepare request body based on tool type
+          let requestBody: any = {
+            query: args.query || `Execute ${name} with parameters`,
+            context: {
+              tool_name: name,
+              session_id: Date.now().toString(),
+              ...args  // Include all function arguments in context
+            }
+          };
+
+          // For transaction tools, add user_id (you should get this from your app state)
+          // For now, using a default user_id of 1 - you should replace this with actual user authentication
+          if (['transfer_money', 'deposit_money', 'withdraw_money', 'get_my_accounts', 'get_account_balance', 'get_account_details'].includes(name)) {
+            requestBody.user_id = 1; // TODO: Replace with actual authenticated user ID
+          }
+
           // Call the backend RAG API
           const response = await fetch(
             `${config.backendURL}${config.endpoints.rag.live.query}`,
@@ -159,13 +280,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                query: args.query,
-                context: {
-                  tool_name: name,
-                  session_id: Date.now().toString(),
-                }
-              }),
+              body: JSON.stringify(requestBody),
             }
           );
 
