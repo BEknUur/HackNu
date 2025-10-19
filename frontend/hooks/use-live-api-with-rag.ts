@@ -93,21 +93,12 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
 
   // Enhanced setConfig that adds RAG tool declarations
   const setConfigWithRAG = useCallback((newConfig: LiveConnectConfig) => {
-    // Create a stable config string to prevent infinite loops
-    const configString = JSON.stringify(newConfig);
-    
-    if (lastConfigRef.current === configString) {
-      console.log('[RAG] Config unchanged, skipping update');
-      return;
-    }
-    
-    lastConfigRef.current = configString;
-
-    if (ragToolsEnabled && ragToolsHealthy) {
-      // Add RAG function declarations to the config
-      const ragConfig: LiveConnectConfig = {
-        ...newConfig,
-        tools: [
+    // Build the effective config (with or without tools based on health)
+    const withTools = ragToolsEnabled && ragToolsHealthy;
+    const ragConfig: LiveConnectConfig = withTools
+      ? {
+          ...newConfig,
+          tools: [
           {
             functionDeclarations: [
               {
@@ -246,14 +237,62 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
             ]
           }
         ]
-      };
-      liveAPI.setConfig(ragConfig);
-      console.log('[RAG] Config updated with RAG tools');
-    } else {
-      liveAPI.setConfig(newConfig);
-      console.log('[RAG] Config updated without RAG tools');
+        }
+      : newConfig;
+
+    // Create a stable string of the EFFECTIVE config including tools/health
+    const effectiveConfigString = JSON.stringify({ ragConfig });
+    if (lastConfigRef.current === effectiveConfigString) {
+      console.log('[RAG] Effective config unchanged, skipping update');
+      return;
     }
+    lastConfigRef.current = effectiveConfigString;
+
+    // Apply config
+    liveAPI.setConfig(ragConfig);
+    console.log(withTools ? '[RAG] Config updated WITH RAG tools' : '[RAG] Config updated WITHOUT RAG tools');
   }, [liveAPI, ragToolsEnabled, ragToolsHealthy]);
+
+  // Edge-triggered reconnect only when health flips from false -> true
+  const prevHealthyRef = useRef<boolean>(false);
+  const reconnectingRef = useRef<boolean>(false);
+  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const becameHealthy = ragToolsEnabled && ragToolsHealthy && !prevHealthyRef.current;
+
+    if (!ragToolsHealthy) {
+      // If health goes unhealthy, allow future reconnect when it becomes healthy again
+      prevHealthyRef.current = false;
+      if (cooldownRef.current) {
+        clearTimeout(cooldownRef.current);
+        cooldownRef.current = null;
+      }
+      return;
+    }
+
+    if (becameHealthy && !reconnectingRef.current) {
+      // Guard against rapid repeats
+      reconnectingRef.current = true;
+      console.log('[RAG] Reconnecting to apply RAG tools in active session...');
+
+      // Best-effort reconnect; ignore errors
+      liveAPI
+        .connect()
+        .then(() => console.log('[RAG] Reconnected with tools'))
+        .catch((err) => console.warn('[RAG] Reconnect warning:', err?.message || err))
+        .finally(() => {
+          prevHealthyRef.current = true;
+          reconnectingRef.current = false;
+          // Cooldown to avoid re-trigger from transient state churn
+          if (cooldownRef.current) clearTimeout(cooldownRef.current);
+          cooldownRef.current = setTimeout(() => {
+            // Keep prevHealthy true; effect only fires again if health becomes false then true
+            cooldownRef.current = null;
+          }, 3000);
+        });
+    }
+  }, [ragToolsEnabled, ragToolsHealthy, liveAPI]);
 
   // Handle tool calls from Gemini
   useEffect(() => {
