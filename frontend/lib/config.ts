@@ -68,9 +68,9 @@ export const config = {
       status: '/api/rag/status',
       toolsStatus: '/api/rag/tools/status',
       live: {
-        functionDeclarations: '/api/rag/live/function-declarations',
-        toolCall: '/api/rag/live/tool-call',
-        health: '/api/rag/live/health',
+        query: '/api/rag/live/query',
+        supervisorStatus: '/api/rag/live/supervisor/status',
+        initialize: '/api/rag/live/supervisor/initialize',
       }
     },
     products: '/api/products',

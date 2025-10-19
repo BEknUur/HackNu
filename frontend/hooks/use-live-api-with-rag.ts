@@ -30,12 +30,12 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
 
   // Check RAG tools health on mount and periodically
   useEffect(() => {
-    let healthCheckInterval: NodeJS.Timeout | null = null;
+    let healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 
     const checkRAGHealth = async () => {
       try {
         const response = await fetch(
-          `${config.backendURL}/api/rag/live/supervisor/status`,
+          `${config.backendURL}${config.endpoints.rag.live.supervisorStatus}`,
           {
             method: 'GET',
             headers: {
@@ -86,10 +86,10 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
                 name: "vector_search",
                 description: "Search company internal documents, policies, and knowledge base. Use this for questions about company information, internal procedures, policies, or any company-specific knowledge.",
                 parameters: {
-                  type: "object",
+                  type: "object" as any,
                   properties: {
                     query: {
-                      type: "string",
+                      type: "string" as any,
                       description: "The search query to find relevant information from company documents"
                     }
                   },
@@ -100,10 +100,10 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
                 name: "web_search",
                 description: "Search the web for current information, news, and general knowledge. Use this for questions about current events, real-time information, or general topics not in company documents.",
                 parameters: {
-                  type: "object",
+                  type: "object" as any,
                   properties: {
                     query: {
-                      type: "string",
+                      type: "string" as any,
                       description: "The search query to find information on the web"
                     }
                   },
@@ -142,7 +142,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
 
           // Call the backend RAG API
           const response = await fetch(
-            `${config.backendURL}/api/rag/live/query`,
+            `${config.backendURL}${config.endpoints.rag.live.query}`,
             {
               method: 'POST',
               headers: {

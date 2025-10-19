@@ -7,8 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { ZamanColors } from '@/constants/theme';
 import { config } from '@/lib/config';
 
-const API_URL = 'http://46.101.175.118:8000/api';
-
 interface UserData {
   id: number;
   name: string;
@@ -130,7 +128,7 @@ export default function LoginScreen() {
     try {
       console.log('Starting face verification...');
       console.log('Photo URI:', capturedPhoto);
-      console.log('API URL:', `${API_URL}/faceid/verify`);
+      console.log('API URL:', `${config.backendURL}/api/faceid/verify`);
       
       // Fetch the photo from the URI
       const response = await fetch(capturedPhoto);
@@ -150,7 +148,7 @@ export default function LoginScreen() {
       formData.append('file', blob, 'photo.jpg');
 
       console.log('Sending verification request...');
-      const verifyResponse = await fetch(`${API_URL}/faceid/verify`, {
+      const verifyResponse = await fetch(`${config.backendURL}/api/faceid/verify`, {
         method: 'POST',
         body: formData,
       });
@@ -238,7 +236,7 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const loginResponse = await fetch(`${API_URL}/auth/login`, {
+      const loginResponse = await fetch(`${config.backendURL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -323,7 +321,7 @@ export default function LoginScreen() {
       // @ts-ignore - FormData accepts blob with filename
       formData.append('avatar', blob, 'avatar.jpg');
 
-      const registerResponse = await fetch(`${API_URL}/auth/register`, {
+      const registerResponse = await fetch(`${config.backendURL}/api/auth/register`, {
         method: 'POST',
         body: formData,
       });
