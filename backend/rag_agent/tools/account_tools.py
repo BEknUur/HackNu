@@ -142,8 +142,14 @@ def get_my_accounts(user_id: int = None) -> str:
                 currency_totals[currency] = 0
             currency_totals[currency] += float(account.balance)
         
-        # Build response
-        response = f"You have {len(account_lines)} active account(s):\n\n"
+        # Build response with explicit first account ID
+        first_account_id = accounts[0].id if accounts else None
+        response = f"You have {len(account_lines)} active account(s):\n"
+        if first_account_id:
+            response += f"[DEFAULT_ACCOUNT_ID: {first_account_id}]\n\n"
+        else:
+            response += "\n"
+        
         response += "\n".join(account_lines)
         
         # Add totals

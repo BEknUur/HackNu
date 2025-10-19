@@ -192,11 +192,12 @@ def transfer_money(
     Transfer money from one account to another account.
     
     Use this tool when the user wants to send money to another account or person.
+    IMPORTANT: If user doesn't specify source account, call get_my_accounts first and use the [DEFAULT_ACCOUNT_ID] from the response.
     
     Args:
-        from_account_id: The ID of the source account (required)
-        to_account_id: The ID of the destination account (required)
-        amount: The amount of money to transfer (must be positive, required)
+        from_account_id: The ID of the source account (required). If not specified by user, use DEFAULT_ACCOUNT_ID from get_my_accounts
+        to_account_id: The ID of the destination account (required). Parse from user input: "account 1", "account ID 1", "account number one" all mean to_account_id=1
+        amount: The amount of money to transfer (must be positive, required). Parse from user: "6000", "6000 KZT", "6000 tenge", "6000T" all mean amount=6000
         currency: The currency code - only 'KZT' is supported (default: 'KZT')
         description: Optional description of the transfer
         
@@ -204,9 +205,9 @@ def transfer_money(
         A success message with transaction details or an error message
         
     Examples:
-        - "Transfer 100000 KZT from account 1 to account 2"
-        - "Send 50000 KZT from my account 3 to account 4"
-        - "Transfer 75000 KZT from account 1 to account 5 for payment"
+        - "Send 6000 tenge to account 1" → get_my_accounts, then transfer_money(from_account_id=<DEFAULT_ACCOUNT_ID>, to_account_id=1, amount=6000, currency="KZT")
+        - "Transfer 100000 KZT to account 2" → get_my_accounts, then transfer_money(from_account_id=<DEFAULT_ACCOUNT_ID>, to_account_id=2, amount=100000, currency="KZT")
+        - "Send 50000 from account 3 to account 4" → transfer_money(from_account_id=3, to_account_id=4, amount=50000, currency="KZT")
     """
     try:
         context = get_transaction_context()
