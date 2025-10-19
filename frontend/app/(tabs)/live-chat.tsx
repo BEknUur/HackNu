@@ -5,6 +5,8 @@ import Constants from 'expo-constants';
 import { AudioRecorder } from '../../lib/audio-recorder';
 import { useWebcam } from '../../hooks/use-webcam';
 import { useScreenCapture } from '../../hooks/use-screen-capture';
+import { ZamanColors } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 // @ts-ignore - для web video элемента
 declare global {
@@ -63,55 +65,55 @@ INSTRUCTIONS:
   // UI translations
   const translations = {
     ru: {
-      title: 'Gemini Live Чат',
-      subtitle: 'Мультимодальный AI Ассистент',
+      title: 'Gemini Live Chat',
+      subtitle: 'Multimodal AI Assistant',
       connect: 'Подключить',
-      live: 'В ЭФИРЕ',
-      greetingMessage: 'Привет! Я Gemini AI с мультимодальными возможностями. Включи микрофон, камеру или покажи свой экран чтобы начать! 🎤📹🖥️',
-      connected: 'Подключено к Gemini Live API! 🚀',
+      live: 'LIVE',
+      greetingMessage: 'Привет! Я Gemini AI с мультимодальными возможностями. Включи микрофон, камеру или покажи свой экран чтобы начать!',
+      connected: 'Подключено к Gemini Live API',
       disconnected: 'Отключено от Gemini',
       connectFirst: 'Сначала подключитесь к Gemini',
       emptyStateText: 'Нажми "Подключить" чтобы начать',
-      emptyStateSubtext: 'После подключения используй кнопки ниже:',
-      emptyStateButtons: '🎤 Голос • 📹 Камера • 🖥️ Экран',
-      apiKeyMissing: '⚠️ API ключ не найден!',
-      micOn: '🎤 Микрофон включен - Говори!',
-      micOff: '🔇 Микрофон выключен',
-      cameraOn: '📹 Камера включена - AI видит тебя!',
-      cameraOff: '📷 Камера выключена',
-      screenOn: '🖥️ Показ экрана включен - AI видит твой экран!',
-      screenOff: '🖥️ Показ экрана остановлен',
-      microphone: 'Микрофон',
-      camera: 'Камера',
-      screen: 'Экран',
-      cameraPreview: '📹 Превью Камеры',
-      screenPreview: '🖥️ Превью Экрана',
-      volume: 'Громкость',
+      emptyStateSubtext: 'После подключения используй кнопки ниже',
+      emptyStateButtons: 'Голос • Камера • Экран',
+      apiKeyMissing: 'API ключ не найден',
+      micOn: 'Микрофон включен - Говори!',
+      micOff: 'Микрофон выключен',
+      cameraOn: 'Камера включена - AI видит тебя!',
+      cameraOff: 'Камера выключена',
+      screenOn: 'Показ экрана включен - AI видит твой экран!',
+      screenOff: 'Показ экрана остановлен',
+      microphone: 'Microphone',
+      camera: 'Camera',
+      screen: 'Screen',
+      cameraPreview: 'Camera Preview',
+      screenPreview: 'Screen Preview',
+      volume: 'Volume',
     },
     en: {
       title: 'Gemini Live Chat',
       subtitle: 'Multimodal AI Assistant',
       connect: 'Connect',
       live: 'LIVE',
-      greetingMessage: 'Hello! I\'m Gemini AI with multimodal capabilities. Turn on your microphone, camera, or share your screen to start! 🎤📹🖥️',
-      connected: 'Connected to Gemini Live API! 🚀',
+      greetingMessage: 'Hello! I\'m Gemini AI with multimodal capabilities. Turn on your microphone, camera, or share your screen to start!',
+      connected: 'Connected to Gemini Live API',
       disconnected: 'Disconnected from Gemini',
       connectFirst: 'Please connect to Gemini first',
       emptyStateText: 'Press "Connect" to start',
-      emptyStateSubtext: 'After connecting, use the buttons below:',
-      emptyStateButtons: '🎤 Voice • 📹 Camera • 🖥️ Screen Share',
-      apiKeyMissing: '⚠️ API key not found!',
-      micOn: '🎤 Microphone is ON - Speak now!',
-      micOff: '🔇 Microphone turned off',
-      cameraOn: '📹 Camera is ON - AI can see you!',
-      cameraOff: '📷 Camera turned off',
-      screenOn: '🖥️ Screen sharing is ON - AI can see your screen!',
-      screenOff: '🖥️ Screen sharing stopped',
+      emptyStateSubtext: 'After connecting, use the buttons below',
+      emptyStateButtons: 'Voice • Camera • Screen Share',
+      apiKeyMissing: 'API key not found',
+      micOn: 'Microphone is ON - Speak now!',
+      micOff: 'Microphone turned off',
+      cameraOn: 'Camera is ON - AI can see you!',
+      cameraOff: 'Camera turned off',
+      screenOn: 'Screen sharing is ON - AI can see your screen!',
+      screenOff: 'Screen sharing stopped',
       microphone: 'Microphone',
       camera: 'Camera',
       screen: 'Screen',
-      cameraPreview: '📹 Camera Preview',
-      screenPreview: '🖥️ Screen Preview',
+      cameraPreview: 'Camera Preview',
+      screenPreview: 'Screen Preview',
       volume: 'Volume',
     },
   };
@@ -389,8 +391,14 @@ INSTRUCTIONS:
           {/* RAG Tools Indicator */}
           {ragToolsEnabled && (
             <View style={[styles.ragIndicator, ragToolsHealthy ? styles.ragIndicatorHealthy : styles.ragIndicatorError]}>
-              <Text style={styles.ragIndicatorText}>
-                {ragToolsHealthy ? '🧠 RAG' : '⚠️ RAG'}
+              <Ionicons 
+                name={ragToolsHealthy ? "checkmark-circle" : "alert-circle"} 
+                size={16} 
+                color={ZamanColors.white} 
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.ragIndicatorText, (ragToolsHealthy || !ragToolsHealthy) && styles.ragIndicatorTextActive]}>
+                RAG
               </Text>
             </View>
           )}
@@ -402,7 +410,7 @@ INSTRUCTIONS:
               onPress={() => setLanguage('en')}
             >
               <Text style={[styles.languageButtonText, language === 'en' && styles.languageButtonTextActive]}>
-                EN 🇺🇸
+                EN
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -410,7 +418,7 @@ INSTRUCTIONS:
               onPress={() => setLanguage('ru')}
             >
               <Text style={[styles.languageButtonText, language === 'ru' && styles.languageButtonTextActive]}>
-                RU 🇷🇺
+                RU
               </Text>
             </TouchableOpacity>
           </View>
@@ -419,9 +427,12 @@ INSTRUCTIONS:
             style={[styles.connectButton, connected && styles.connectButtonActive]}
             onPress={handleConnect}
           >
-            <Text style={styles.connectButtonText}>
-              {connected ? `● ${t.live}` : `○ ${t.connect}`}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={[styles.statusDot, connected && styles.statusDotActive]} />
+              <Text style={styles.connectButtonText}>
+                {connected ? t.live : t.connect}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -462,7 +473,9 @@ INSTRUCTIONS:
 
         {messages.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🤖</Text>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="chatbubbles-outline" size={64} color={ZamanColors.persianGreen} />
+            </View>
             <Text style={styles.emptyStateText}>
               {t.emptyStateText}
             </Text>
@@ -473,7 +486,10 @@ INSTRUCTIONS:
               {t.emptyStateButtons}
             </Text>
             {!API_KEY && (
-              <Text style={styles.errorText}>{t.apiKeyMissing}</Text>
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle-outline" size={18} color="#f44336" />
+                <Text style={styles.errorText}>{t.apiKeyMissing}</Text>
+              </View>
             )}
           </View>
         ) : (
@@ -482,7 +498,9 @@ INSTRUCTIONS:
               key={msg.id} 
               style={[styles.messageBubble, msg.sender === 'user' ? styles.userBubble : styles.aiBubble]}
             >
-              <Text style={styles.messageText}>{msg.text}</Text>
+              <Text style={[styles.messageText, msg.sender === 'user' && styles.userMessageText]}>
+                {msg.text}
+              </Text>
             </View>
           ))
         )}
@@ -491,9 +509,24 @@ INSTRUCTIONS:
       {/* Active indicator */}
       {connected && (isMicOn || webcam.isStreaming || screenCapture.isStreaming) && (
         <View style={styles.activeIndicator}>
-          {isMicOn && <Text style={styles.activeText}>🎤 {t.microphone}</Text>}
-          {webcam.isStreaming && <Text style={styles.activeText}>📹 {t.camera}</Text>}
-          {screenCapture.isStreaming && <Text style={styles.activeText}>🖥️ {t.screen}</Text>}
+          {isMicOn && (
+            <View style={styles.activeItem}>
+              <Ionicons name="mic" size={16} color={ZamanColors.persianGreen} />
+              <Text style={styles.activeText}>{t.microphone}</Text>
+            </View>
+          )}
+          {webcam.isStreaming && (
+            <View style={styles.activeItem}>
+              <Ionicons name="videocam" size={16} color={ZamanColors.persianGreen} />
+              <Text style={styles.activeText}>{t.camera}</Text>
+            </View>
+          )}
+          {screenCapture.isStreaming && (
+            <View style={styles.activeItem}>
+              <Ionicons name="desktop" size={16} color={ZamanColors.persianGreen} />
+              <Text style={styles.activeText}>{t.screen}</Text>
+            </View>
+          )}
           {isMicOn && <Text style={styles.volumeText}>{t.volume}: {Math.round(volume * 100)}%</Text>}
         </View>
       )}
@@ -505,8 +538,15 @@ INSTRUCTIONS:
           disabled={!connected}
           onPress={toggleMic}
         >
-          <Text style={styles.controlButtonIcon}>{isMicOn ? '🎤' : '🔇'}</Text>
-          <Text style={styles.controlButtonText}>{t.microphone}</Text>
+          <Ionicons 
+            name={isMicOn ? 'mic' : 'mic-off'} 
+            size={28} 
+            color={isMicOn ? ZamanColors.white : ZamanColors.black} 
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={[styles.controlButtonText, isMicOn && styles.controlButtonTextActive]}>
+            {t.microphone}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -514,8 +554,15 @@ INSTRUCTIONS:
           disabled={!connected || Platform.OS !== 'web'}
           onPress={toggleCamera}
         >
-          <Text style={styles.controlButtonIcon}>{webcam.isStreaming ? '📹' : '📷'}</Text>
-          <Text style={styles.controlButtonText}>{t.camera}</Text>
+          <Ionicons 
+            name={webcam.isStreaming ? 'videocam' : 'videocam-off'} 
+            size={28} 
+            color={webcam.isStreaming ? ZamanColors.white : ZamanColors.black} 
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={[styles.controlButtonText, webcam.isStreaming && styles.controlButtonTextActive]}>
+            {t.camera}
+          </Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -523,8 +570,15 @@ INSTRUCTIONS:
           disabled={!connected || Platform.OS !== 'web'}
           onPress={toggleScreenShare}
         >
-          <Text style={styles.controlButtonIcon}>🖥️</Text>
-          <Text style={styles.controlButtonText}>{t.screen}</Text>
+          <Ionicons 
+            name={screenCapture.isStreaming ? 'desktop' : 'desktop-outline'} 
+            size={28} 
+            color={screenCapture.isStreaming ? ZamanColors.white : ZamanColors.black} 
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={[styles.controlButtonText, screenCapture.isStreaming && styles.controlButtonTextActive]}>
+            {t.screen}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -536,15 +590,20 @@ export default function LiveChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  container: { 
+    flex: 1, 
+    backgroundColor: ZamanColors.white 
+  },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    padding: 16, 
-    backgroundColor: '#1a1a1a', 
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    backgroundColor: ZamanColors.white, 
     borderBottomWidth: 1, 
-    borderBottomColor: '#333' 
+    borderBottomColor: ZamanColors.gray[200],
   },
   headerLeft: {
     flexDirection: 'column',
@@ -554,116 +613,241 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
+  headerTitle: { 
+    fontSize: 24, 
+    fontWeight: '600', 
+    color: ZamanColors.black,
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: { 
+    fontSize: 13, 
+    color: ZamanColors.gray[500], 
+    marginTop: 4,
+    fontWeight: '400',
+  },
   languageSwitcher: {
     flexDirection: 'row',
-    backgroundColor: '#333',
-    borderRadius: 20,
-    padding: 4,
+    backgroundColor: ZamanColors.cloud,
+    borderRadius: 12,
+    padding: 3,
     gap: 4,
   },
   languageButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   languageButtonActive: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: ZamanColors.persianGreen,
   },
   languageButtonText: {
-    color: '#888',
-    fontSize: 12,
-    fontWeight: '600',
+    color: ZamanColors.gray[500],
+    fontSize: 13,
+    fontWeight: '500',
   },
   languageButtonTextActive: {
-    color: '#fff',
+    color: ZamanColors.white,
   },
   ragIndicator: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#333',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: ZamanColors.cloud,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
   },
   ragIndicatorHealthy: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: ZamanColors.persianGreen,
+    borderColor: ZamanColors.persianGreen,
   },
   ragIndicatorError: {
     backgroundColor: '#f44336',
+    borderColor: '#f44336',
   },
   ragIndicatorText: {
-    color: '#fff',
+    color: ZamanColors.black,
     fontSize: 12,
     fontWeight: '600',
   },
-  connectButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#333', borderRadius: 20 },
-  connectButtonActive: { backgroundColor: '#f44336' },
-  connectButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  messagesContainer: { flex: 1, padding: 16 },
+  ragIndicatorTextActive: {
+    color: ZamanColors.white,
+  },
+  connectButton: { 
+    paddingHorizontal: 24, 
+    paddingVertical: 10, 
+    backgroundColor: ZamanColors.white,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
+    borderRadius: 12,
+  },
+  connectButtonActive: { 
+    backgroundColor: ZamanColors.solar,
+    borderColor: ZamanColors.solar,
+  },
+  connectButtonText: { 
+    color: ZamanColors.black, 
+    fontWeight: '600', 
+    fontSize: 14,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: ZamanColors.gray[400],
+  },
+  statusDotActive: {
+    backgroundColor: ZamanColors.black,
+  },
+  messagesContainer: { 
+    flex: 1, 
+    padding: 24,
+    backgroundColor: ZamanColors.cloud,
+  },
   videoPreviewContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: '#1a1a1a',
+    marginBottom: 24,
+    padding: 20,
+    backgroundColor: ZamanColors.white,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#4CAF50',
+    borderColor: ZamanColors.persianGreen,
   },
   videoLabel: {
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#4CAF50',
-    borderRadius: 20,
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: ZamanColors.persianGreen,
+    borderRadius: 12,
   },
   videoLabelText: {
-    color: '#fff',
+    color: ZamanColors.white,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyStateText: { fontSize: 18, color: '#fff', textAlign: 'center', marginBottom: 8, fontWeight: '600' },
-  emptyStateSubtext: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 4 },
-  errorText: { fontSize: 14, color: '#f44336', textAlign: 'center', marginTop: 16, fontWeight: 'bold' },
-  messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 16, marginBottom: 12 },
-  userBubble: { alignSelf: 'flex-end', backgroundColor: '#2196F3' },
-  aiBubble: { alignSelf: 'flex-start', backgroundColor: '#333' },
-  messageText: { color: '#fff', fontSize: 16, lineHeight: 22 },
+  emptyState: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    paddingTop: 80,
+  },
+  emptyIconContainer: { 
+    marginBottom: 24,
+    padding: 20,
+    backgroundColor: ZamanColors.cloud,
+    borderRadius: 50,
+  },
+  emptyStateText: { 
+    fontSize: 20, 
+    color: ZamanColors.black, 
+    textAlign: 'center', 
+    marginBottom: 12, 
+    fontWeight: '600',
+  },
+  emptyStateSubtext: { 
+    fontSize: 15, 
+    color: ZamanColors.gray[500], 
+    textAlign: 'center', 
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: ZamanColors.cloud,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f44336',
+  },
+  errorText: { 
+    fontSize: 14, 
+    color: '#f44336', 
+    fontWeight: '600',
+  },
+  messageBubble: { 
+    maxWidth: '80%', 
+    padding: 16, 
+    borderRadius: 16, 
+    marginBottom: 16,
+  },
+  userBubble: { 
+    alignSelf: 'flex-end', 
+    backgroundColor: ZamanColors.persianGreen,
+  },
+  aiBubble: { 
+    alignSelf: 'flex-start', 
+    backgroundColor: ZamanColors.white,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
+  },
+  messageText: { 
+    color: ZamanColors.black, 
+    fontSize: 16, 
+    lineHeight: 24,
+  },
+  userMessageText: {
+    color: ZamanColors.white,
+  },
   activeIndicator: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#1a1a1a',
+    padding: 16,
+    backgroundColor: ZamanColors.white,
     borderTopWidth: 1,
-    borderTopColor: '#333',
-    gap: 16,
+    borderTopColor: ZamanColors.gray[200],
+    gap: 20,
   },
-  activeText: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
-  volumeText: { color: '#888', fontSize: 12 },
+  activeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  activeText: { 
+    color: ZamanColors.persianGreen, 
+    fontSize: 14, 
+    fontWeight: '600',
+  },
+  volumeText: { 
+    color: ZamanColors.gray[500], 
+    fontSize: 13,
+    fontWeight: '500',
+  },
   controlsContainer: { 
     flexDirection: 'row', 
     justifyContent: 'space-around', 
-    padding: 16, 
-    backgroundColor: '#1a1a1a', 
+    padding: 24, 
+    backgroundColor: ZamanColors.white, 
     borderTopWidth: 1, 
-    borderTopColor: '#333' 
+    borderTopColor: ZamanColors.gray[200],
   },
   controlButton: { 
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 16,
-    backgroundColor: '#333',
+    backgroundColor: ZamanColors.white,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
     opacity: 0.5,
-    minWidth: 100,
+    minWidth: 110,
   },
   controlButtonActive: { 
     opacity: 1, 
-    backgroundColor: '#4CAF50',
+    backgroundColor: ZamanColors.persianGreen,
+    borderColor: ZamanColors.persianGreen,
   },
-  controlButtonIcon: { fontSize: 28, marginBottom: 4 },
-  controlButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  controlButtonText: { 
+    color: ZamanColors.black, 
+    fontSize: 13, 
+    fontWeight: '600',
+  },
+  controlButtonTextActive: {
+    color: ZamanColors.white,
+  },
 });

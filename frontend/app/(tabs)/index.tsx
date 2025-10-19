@@ -1,98 +1,267 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { View, Text, Platform, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
+import { ZamanColors } from '@/constants/theme';
+import ZamanLogo from '@/components/zaman-logo';
+
+interface UserData {
+  id: number;
+  name: string;
+  surname: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const [user, setUser] = useState<UserData | null>(null);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  function loadUser() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+          setUser(JSON.parse(userJson));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  }
+
+  function handleLogout() {
+    // On web, Alert.alert doesn't work, so use confirm
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to logout?')) {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('user');
+        }
+        router.replace('/login');
+      }
+    } else {
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Logout', 
+            style: 'destructive',
+            onPress: () => {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('user');
+              }
+              router.replace('/login');
+            }
+          }
+        ]
+      );
+    }
+  }
+
+  const features = [
+    {
+      title: 'Live Chat',
+      description: 'Real-time AI conversations',
+      icon: 'chatbubbles',
+      href: '/live-chat' as const,
+      bgColor: ZamanColors.cloud
+    },
+    {
+      title: 'Face Verification',
+      description: 'Secure biometric authentication',
+      icon: 'scan-circle',
+      href: '/face-verify' as const,
+      bgColor: ZamanColors.cloud
+    },
+    {
+      title: 'Explore',
+      description: 'Discover new features',
+      icon: 'compass',
+      href: '/explore' as const,
+      bgColor: ZamanColors.cloud
+    }
+  ];
+
+  return (
+    <View style={styles.container}>
+      {/* Logout Button - Top Right */}
+      {user && (
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      )}
+
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Minimal Header */}
+        <View style={styles.header}>
+          <View style={styles.logoMark}>
+            <ZamanLogo size={90} withAccent />
+          </View>
+          <Text style={styles.appName}>ZAMAN</Text>
+          <Text style={styles.welcomeText}>
+            Welcome, {user ? `${user.name} ${user.surname}` : 'Beknur Ualikhanuly'}
+          </Text>
+          <Text style={styles.subtitleText}>
+            Your AI-powered platform for innovation
+          </Text>
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Quick Actions</Text>
+            <View style={styles.quickActions}>
+              {features.map((feature, index) => (
+                <Link key={index} href={feature.href} asChild>
+                  <TouchableOpacity style={styles.featureCard}>
+                    <View style={styles.iconContainer}>
+                      <Ionicons 
+                        name={feature.icon as any} 
+                        size={28} 
+                        color={ZamanColors.white}
+                      />
+                    </View>
+                    <Text style={styles.cardTitle}>
+                      {feature.title}
+                    </Text>
+                    <Text style={styles.cardDescription}>
+                      {feature.description}
+                    </Text>
+                  </TouchableOpacity>
+                </Link>
+              ))}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: ZamanColors.white,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  scrollView: {
+    flex: 1,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  contentContainer: {
+    flexGrow: 1,
+    paddingBottom: 100,
+  },
+  logoutButton: {
     position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 24,
+    backgroundColor: ZamanColors.white,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    zIndex: 100,
+  },
+  logoutText: {
+    color: ZamanColors.persianGreen,
+    fontWeight: '500',
+    fontSize: 15,
+  },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingBottom: 50,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    backgroundColor: ZamanColors.white,
+  },
+  logoMark: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  appName: {
+    fontSize: 32,
+    fontWeight: '300',
+    letterSpacing: 8,
+    color: ZamanColors.black,
+    marginBottom: 24,
+  },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: ZamanColors.black,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitleText: {
+    fontSize: 15,
+    color: ZamanColors.gray[500],
+    fontWeight: '400',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  content: {
+    paddingHorizontal: 32,
+    paddingBottom: 40,
+  },
+  section: {
+    marginBottom: 40,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: ZamanColors.gray[600],
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 20,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  featureCard: {
+    flex: 1,
+    backgroundColor: ZamanColors.white,
+    borderWidth: 1,
+    borderColor: ZamanColors.gray[300],
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    minHeight: 180,
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: ZamanColors.persianGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ZamanColors.black,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  cardDescription: {
+    fontSize: 13,
+    color: ZamanColors.gray[500],
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

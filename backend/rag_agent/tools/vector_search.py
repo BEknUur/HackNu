@@ -68,16 +68,25 @@ class VectorSearchTool:
             logger.error(f"Error initializing vector search tool: {e}")
             raise RuntimeError(f"Failed to initialize vector search: {e}")
     
-    def search(self, query: str, k: int = 3) -> str:
+    def search(self, query: str, k: int = 5, use_reranking: bool = True, 
+               use_hyde: bool = True, use_hybrid: bool = True,
+               similarity_threshold: float = 0.5) -> str:
         """
-        Search for relevant documents using vector similarity.
+        Search for relevant documents using advanced RAG techniques:
+        - HyDE (Hypothetical Document Embeddings) for query expansion
+        - Hybrid Search (BM25 + Vector) for better recall
+        - AI Reranking for improved precision
         
         Args:
             query: Search query
             k: Number of results to return
+            use_reranking: Whether to use Gemini reranking for better accuracy
+            use_hyde: Whether to use HyDE query expansion
+            use_hybrid: Whether to use hybrid search (BM25 + Vector)
+            similarity_threshold: Minimum similarity score (lower is better for FAISS distance)
             
         Returns:
-            str: Formatted search results
+            str: Formatted search results with quality indicators
         """
         if not self.vector_store_manager or not self.vector_store_manager.vector_store:
             raise RuntimeError(
@@ -86,38 +95,109 @@ class VectorSearchTool:
             )
         
         try:
-            # Perform vector search
-            results = self.vector_store_manager.search_documents(query, k=k)
+            # Use advanced RAG search with all features
+            results = self.vector_store_manager.search_documents(
+                query, 
+                k=k, 
+                use_reranking=use_reranking,
+                use_hyde=use_hyde,
+                use_hybrid=use_hybrid
+            )
             
             if not results:
-                return f"No relevant documents found for query: '{query}'"
+                return f"❌ No relevant documents found for query: '{query}'\n\nTry:\n- Rephrasing your question\n- Using different keywords\n- Asking about available topics"
             
-            # Format results
-            formatted_results = []
+            # Check quality based on scores
+            has_rerank = 'rerank_score' in results[0] if results else False
+            
+            if has_rerank:
+                # Use combined score for quality assessment
+                best_score = results[0].get('combined_score', 0)
+                quality_warning = "" if best_score > 0.5 else "⚠️ Results may have limited relevance. Consider rephrasing.\n\n"
+            else:
+                # Use similarity score for quality assessment
+                best_score = results[0].get('similarity_score', 1.0)
+                quality_warning = "" if best_score < similarity_threshold else "⚠️ Results may have limited relevance. Consider rephrasing.\n\n"
+            
+            # Format results with enhanced metadata
+            formatted_results = [quality_warning] if quality_warning else []
+            
             for i, result in enumerate(results, 1):
                 content = result['content']
                 metadata = result['metadata']
-                score = result['similarity_score']
+                sim_score = result['similarity_score']
                 
                 # Extract source information
                 source = metadata.get('source', 'Unknown')
-                if isinstance(source, str):
-                    # Extract filename from path
-                    filename = source.split('/')[-1] if '/' in source else source
+                filename = metadata.get('filename', metadata.get('source_file', 'Unknown'))
+                document_type = metadata.get('document_type', 'text')
+                is_pdf = document_type == 'pdf'
+                
+                # Clean filename
+                if isinstance(source, str) and '/' in source:
+                    filename = source.split('/')[-1]
+                
+                # Quality indicators
+                if has_rerank:
+                    # Use combined/rerank score
+                    combined_score = result.get('combined_score', 0)
+                    rerank_score = result.get('rerank_score', 0)
+                    
+                    if combined_score > 0.7 or rerank_score >= 8:
+                        confidence_emoji = "🟢"
+                        confidence_level = "Excellent"
+                    elif combined_score > 0.5 or rerank_score >= 6:
+                        confidence_emoji = "🟡"
+                        confidence_level = "Good"
+                    elif combined_score > 0.3 or rerank_score >= 4:
+                        confidence_emoji = "🟠"
+                        confidence_level = "Fair"
+                    else:
+                        confidence_emoji = "🔴"
+                        confidence_level = "Low"
+                    
+                    score_display = f"Relevance: {rerank_score:.1f}/10, Similarity: {sim_score:.3f}"
                 else:
-                    filename = 'Unknown'
+                    # Use similarity score (FAISS distance: lower = better)
+                    if sim_score < 0.2:
+                        confidence_emoji = "🟢"
+                        confidence_level = "Excellent"
+                    elif sim_score < 0.4:
+                        confidence_emoji = "🟡"
+                        confidence_level = "Good"
+                    elif sim_score < 0.6:
+                        confidence_emoji = "🟠"
+                        confidence_level = "Fair"
+                    else:
+                        confidence_emoji = "🔴"
+                        confidence_level = "Low"
+                    
+                    score_display = f"Similarity: {sim_score:.3f}"
+                
+                doc_type_indicator = "📄 PDF" if is_pdf else "📝 Text"
+                
+                # Show more content for better context
+                content_preview = content[:500] if len(content) > 500 else content
                 
                 formatted_results.append(
-                    f"Result {i} (Similarity: {score:.3f}):\n"
-                    f"Source: {filename}\n"
-                    f"Content: {content[:200]}{'...' if len(content) > 200 else ''}\n"
+                    f"{confidence_emoji} **Result {i}** ({confidence_level}) {doc_type_indicator}\n"
+                    f"📁 Source: {filename}\n"
+                    f"📊 {score_display}\n"
+                    f"📖 Content:\n{content_preview}{'...' if len(content) > 500 else ''}\n"
+                    f"{'─' * 80}\n"
                 )
             
-            return "\n".join(formatted_results)
+            result_text = "\n".join(formatted_results)
+            
+            # Add helpful footer with reranking status
+            rerank_status = " (with AI reranking)" if has_rerank else ""
+            result_text += f"\n✅ Found {len(results)} relevant result(s){rerank_status}.\n"
+            
+            return result_text
             
         except Exception as e:
             logger.error(f"Error performing vector search: {e}")
-            return f"Error searching documents: {str(e)}"
+            return f"❌ Error searching documents: {str(e)}"
     
     def get_store_info(self) -> Dict[str, Any]:
         """Get information about the vector store."""

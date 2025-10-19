@@ -9,7 +9,6 @@ from services.cart.router import router as cart_router
 from services.financial_goals.router import router as financial_goals_router
 from faceid.router import router as faceid_router
 from rag_agent.routes.router import router as rag_router
-from rag_agent.routes.live_tools_router import router as rag_live_router
 from rag_agent.routes.live_query_router import router as rag_live_query_router
 from database import Base, engine
 
@@ -44,7 +43,6 @@ app.include_router(cart_router, prefix="/api")
 app.include_router(financial_goals_router, prefix="/api")
 app.include_router(faceid_router, prefix="/api/faceid", tags=["Face Verification"])
 app.include_router(rag_router, tags=["RAG"])
-app.include_router(rag_live_router, tags=["RAG Live Tools"])
 app.include_router(rag_live_query_router, tags=["RAG Live Query"])
 
 @app.on_event("startup")

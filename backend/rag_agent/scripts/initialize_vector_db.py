@@ -40,9 +40,9 @@ def main():
         print(f"❌ Documents directory not found: {documents_path}")
         return False
     
-    doc_files = list(documents_path.glob("*.txt"))
+    doc_files = list(documents_path.glob("*.txt")) + list(documents_path.glob("*.pdf"))
     if not doc_files:
-        print(f"❌ No .txt files found in {documents_path}")
+        print(f"❌ No .txt or .pdf files found in {documents_path}")
         return False
     
     print(f"📄 Found {len(doc_files)} documents:")
