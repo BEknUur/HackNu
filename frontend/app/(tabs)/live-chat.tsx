@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useLiveAPIWithRAG } from '@/hooks/use-live-api-with-rag';
 import Constants from 'expo-constants';
@@ -27,6 +27,7 @@ function LiveChatContent() {
   const [messages, setMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'ai'}>>([]);
   const [isMicOn, setIsMicOn] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const audioRecorderRef = useRef<AudioRecorder | null>(null);
   const webcam = useWebcam();
   const screenCapture = useScreenCapture();
@@ -34,6 +35,16 @@ function LiveChatContent() {
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoIntervalRef = useRef<number | null>(null);
+
+  // Listen for screen size changes
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const isMobile = screenWidth < 768;
 
   // Language instructions
   const languageInstructions = {
@@ -387,9 +398,9 @@ INSTRUCTIONS:
           <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
         </View>
         
-        <View style={styles.headerRight}>
+        <View style={[styles.headerRight, isMobile && styles.headerRightMobile]}>
           {/* RAG Tools Indicator */}
-          {ragToolsEnabled && (
+          {ragToolsEnabled && !isMobile && (
             <View style={[styles.ragIndicator, ragToolsHealthy ? styles.ragIndicatorHealthy : styles.ragIndicatorError]}>
               <Ionicons 
                 name={ragToolsHealthy ? "checkmark-circle" : "alert-circle"} 
@@ -404,9 +415,9 @@ INSTRUCTIONS:
           )}
           
           {/* Language Switcher */}
-          <View style={styles.languageSwitcher}>
+          <View style={[styles.languageSwitcher, isMobile && styles.languageSwitcherMobile]}>
             <TouchableOpacity 
-              style={[styles.languageButton, language === 'en' && styles.languageButtonActive]}
+              style={[styles.languageButton, language === 'en' && styles.languageButtonActive, isMobile && styles.languageButtonMobile]}
               onPress={() => setLanguage('en')}
             >
               <Text style={[styles.languageButtonText, language === 'en' && styles.languageButtonTextActive]}>
@@ -414,7 +425,7 @@ INSTRUCTIONS:
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.languageButton, language === 'ru' && styles.languageButtonActive]}
+              style={[styles.languageButton, language === 'ru' && styles.languageButtonActive, isMobile && styles.languageButtonMobile]}
               onPress={() => setLanguage('ru')}
             >
               <Text style={[styles.languageButtonText, language === 'ru' && styles.languageButtonTextActive]}>
@@ -424,7 +435,7 @@ INSTRUCTIONS:
           </View>
           
           <TouchableOpacity 
-            style={[styles.connectButton, connected && styles.connectButtonActive]}
+            style={[styles.connectButton, connected && styles.connectButtonActive, isMobile && styles.connectButtonMobile]}
             onPress={handleConnect}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -436,6 +447,23 @@ INSTRUCTIONS:
           </TouchableOpacity>
         </View>
       </View>
+      
+      {/* Mobile RAG Indicator Row */}
+      {isMobile && ragToolsEnabled && (
+        <View style={styles.mobileRagRow}>
+          <View style={[styles.ragIndicator, styles.ragIndicatorMobile, ragToolsHealthy ? styles.ragIndicatorHealthy : styles.ragIndicatorError]}>
+            <Ionicons 
+              name={ragToolsHealthy ? "checkmark-circle" : "alert-circle"} 
+              size={14} 
+              color={ZamanColors.white} 
+              style={{ marginRight: 4 }}
+            />
+            <Text style={[styles.ragIndicatorText, styles.ragIndicatorTextActive, { fontSize: 11 }]}>
+              RAG Tools {ragToolsHealthy ? 'Active' : 'Error'}
+            </Text>
+          </View>
+        </View>
+      )}
       
       <ScrollView style={styles.messagesContainer}>
         {/* Video Preview */}
@@ -607,11 +635,16 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flexDirection: 'column',
+    flex: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flexShrink: 0,
+  },
+  headerRightMobile: {
+    gap: 8,
   },
   headerTitle: { 
     fontSize: 24, 
@@ -632,10 +665,20 @@ const styles = StyleSheet.create({
     padding: 3,
     gap: 4,
   },
+  languageSwitcherMobile: {
+    padding: 2,
+    gap: 2,
+    borderRadius: 10,
+  },
   languageButton: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
+  },
+  languageButtonMobile: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   languageButtonActive: {
     backgroundColor: ZamanColors.persianGreen,
@@ -658,6 +701,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ZamanColors.gray[300],
   },
+  ragIndicatorMobile: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
   ragIndicatorHealthy: {
     backgroundColor: ZamanColors.persianGreen,
     borderColor: ZamanColors.persianGreen,
@@ -674,6 +722,14 @@ const styles = StyleSheet.create({
   ragIndicatorTextActive: {
     color: ZamanColors.white,
   },
+  mobileRagRow: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    backgroundColor: ZamanColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: ZamanColors.gray[200],
+    alignItems: 'flex-start',
+  },
   connectButton: { 
     paddingHorizontal: 24, 
     paddingVertical: 10, 
@@ -681,6 +737,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ZamanColors.gray[300],
     borderRadius: 12,
+  },
+  connectButtonMobile: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   connectButtonActive: { 
     backgroundColor: ZamanColors.solar,
