@@ -28,11 +28,27 @@ export default function HomeScreen() {
       if (typeof localStorage !== 'undefined') {
         const userJson = localStorage.getItem('user');
         if (userJson) {
-          setUser(JSON.parse(userJson));
+          const userData = JSON.parse(userJson);
+          console.log('Loaded user from localStorage:', userData);
+          
+          // Validate user data has required fields
+          if (userData && userData.id) {
+            setUser(userData);
+          } else {
+            console.error('Invalid user data in localStorage:', userData);
+            // Redirect to login if invalid
+            router.replace('/login');
+          }
+        } else {
+          console.log('No user found in localStorage, redirecting to login');
+          // Redirect to login if no user
+          router.replace('/login');
         }
       }
     } catch (error) {
       console.error('Error loading user:', error);
+      // Redirect to login on error
+      router.replace('/login');
     }
   }
 

@@ -1,4 +1,4 @@
-import {
+  import {
     View,
     Text,
     StyleSheet,
@@ -12,6 +12,7 @@ import {
     Platform,
   } from 'react-native';
   import { useState, useEffect, useCallback } from 'react';
+  import { useRouter } from 'expo-router';
   import { Ionicons } from '@expo/vector-icons';
   import { ZamanColors } from '@/constants/theme';
   import {
@@ -38,6 +39,7 @@ import {
   const CURRENCY = 'KZT';
   
   export default function TransactionsScreen() {
+    const router = useRouter();
     const [user, setUser] = useState<UserData | null>(null);
     const [account, setAccount] = useState<Account | null>(null);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -66,22 +68,43 @@ import {
         if (typeof localStorage !== 'undefined') {
           const userJson = localStorage.getItem('user');
           if (userJson) {
-            setUser(JSON.parse(userJson));
+            const userData = JSON.parse(userJson);
+            console.log('Loaded user from localStorage:', userData);
+            
+            // Validate user data has required fields
+            if (userData && userData.id) {
+              setUser(userData);
+            } else {
+              console.error('Invalid user data in localStorage:', userData);
+              // Redirect to login if invalid
+              router.replace('/login');
+            }
+          } else {
+            console.log('No user found in localStorage, redirecting to login');
+            // Redirect to login if no user
+            router.replace('/login');
           }
         }
       } catch (error) {
         console.error('Error loading user:', error);
+        // Redirect to login on error
+        router.replace('/login');
       }
     }
   
     async function loadData() {
-      if (!user) return;
+      if (!user || !user.id) {
+        console.error('Cannot load data: user or user.id is missing');
+        return;
+      }
   
       try {
         setLoading(true);
+        console.log('Loading accounts for user:', user.id);
         
         // Try to get accounts
         let accountsData = await getUserAccounts(user.id);
+        console.log('Accounts loaded:', accountsData);
         
         // If no account exists, create one automatically
         if (accountsData.length === 0) {
@@ -93,21 +116,26 @@ import {
             currency: 'KZT',
           });
           accountsData = [newAccount];
+          console.log('New account created:', newAccount);
         }
   
         // Get transactions
+        console.log('Loading transactions for user:', user.id);
         const transactionsData = await getUserTransactions(user.id, { limit: 100 });
+        console.log('Transactions loaded:', transactionsData.length);
   
         if (accountsData.length > 0) {
           setAccount(accountsData[0]);
         }
         setTransactions(transactionsData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading data:', error);
+        const errorMessage = error?.message || 'Failed to load data. Please try again.';
+        
         if (Platform.OS === 'web') {
-          alert(`Error: ${error instanceof Error ? error.message : 'Failed to load data'}`);
+          alert(`Error loading data: ${errorMessage}`);
         } else {
-          Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load data');
+          Alert.alert('Error loading data', errorMessage);
         }
       } finally {
         setLoading(false);
