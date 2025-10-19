@@ -20,10 +20,10 @@ if str(backend_dir) not in sys.path:
 
 from rag_agent.tools.vector_search import get_vector_search_tool, get_vector_store_status
 from rag_agent.tools.web_search import get_web_search_tool, get_web_search_status
-from rag_agent.tools.transaction_tools import get_transaction_tools
-from rag_agent.tools.account_tools import set_account_context
+from rag_agent.config.orchestrator import rag_system
 from rag_agent.tools import (
     set_transaction_context,
+    set_account_context,
     set_transaction_history_context,
     set_product_context,
     set_cart_context,
@@ -63,34 +63,29 @@ class SupervisorStatus(BaseModel):
 @router.post("/query", response_model=LiveQueryResponse)
 async def live_query(request: LiveQueryRequest, db: Session = Depends(get_db)):
     """
-    Process a live query from Gemini Live API.
+    Process a live query from Gemini Live API using the RAG orchestrator.
     
-    This endpoint receives queries from the frontend and routes them to the appropriate
-    RAG tool (vector_search, web_search, or transaction tools) based on the context.
+    This endpoint receives queries from the frontend and processes them through
+    the RAG system which can handle both information retrieval and transactions.
     
     Args:
         request: Query request with query text and context
         db: Database session for transaction operations
         
     Returns:
-        LiveQueryResponse: Response from the RAG tool
+        LiveQueryResponse: Response from the RAG system
     """
     try:
-        tool_name = request.context.get("tool_name", "vector_search") if request.context else "vector_search"
         query = request.query
         user_id = request.user_id or (request.context.get("user_id") if request.context else None)
+        context = request.context or {}
         
-        logger.info(f"[Live Query] Processing query with tool: {tool_name}")
-        logger.info(f"[Live Query] Query: {query}")
+        logger.info(f"[Live Query] Processing query: {query}")
         logger.info(f"[Live Query] User ID: {user_id}")
-        
-        response_text = ""
-        sources = []
-        agents_used = []
-        confidence = 0.0
+        logger.info(f"[Live Query] Context: {context}")
         
         # Set up transaction context if user_id is provided
-        if user_id and tool_name in ["transfer_money", "deposit_money", "withdraw_money", "purchase_product", "get_account_balance", "get_my_accounts", "get_account_details"]:
+        if user_id:
             try:
                 set_transaction_context(user_id=user_id, db=db)
                 set_account_context(user_id=user_id, db=db)
@@ -108,176 +103,30 @@ async def live_query(request: LiveQueryRequest, db: Session = Depends(get_db)):
                     status="error"
                 )
         
-        # Route to appropriate tool
-        if tool_name == "vector_search":
-            try:
-                vector_tool = get_vector_search_tool()
-                response_text = vector_tool.search(
-                    query=query,
-                    k=3,
-                    use_reranking=True,
-                    use_hyde=True,
-                    use_hybrid=True
-                )
-                agents_used.append("vector_search")
-                
-                # Extract sources from response (if available)
-                if "Result" in response_text:
-                    sources.append({
-                        "type": "internal_documents",
-                        "tool": "vector_search"
-                    })
-                    confidence = 0.85
-                else:
-                    confidence = 0.3
-                    
-            except Exception as e:
-                logger.error(f"[Live Query] Vector search error: {e}")
-                response_text = f"❌ Error performing vector search: {str(e)}\n\nPlease ensure the vector store is initialized."
-                confidence = 0.0
-                
-        elif tool_name == "web_search":
-            try:
-                web_tool = get_web_search_tool()
-                response_text = web_tool.search(
-                    query=query,
-                    max_results=3,
-                    search_depth="advanced"
-                )
-                agents_used.append("web_search")
-                
-                # Extract sources from response
-                if "Web Result" in response_text:
-                    sources.append({
-                        "type": "web_search",
-                        "tool": "web_search"
-                    })
-                    confidence = 0.80
-                else:
-                    confidence = 0.3
-                    
-            except Exception as e:
-                logger.error(f"[Live Query] Web search error: {e}")
-                response_text = f"❌ Error performing web search: {str(e)}\n\nPlease ensure TAVILY_API_KEY is configured."
-                confidence = 0.0
-                
-        # Transaction tools
-        elif tool_name in ["transfer_money", "deposit_money", "withdraw_money", "purchase_product"]:
-            if not user_id:
-                response_text = "❌ Error: User ID is required for transaction operations."
-                confidence = 0.0
-            else:
-                try:
-                    # Get transaction tools
-                    transaction_tools = get_transaction_tools()
-                    tool_map = {tool.name: tool for tool in transaction_tools}
-                    
-                    if tool_name in tool_map:
-                        # Parse parameters from context
-                        context = request.context or {}
-                        
-                        # Execute the transaction tool
-                        if tool_name == "transfer_money":
-                            response_text = tool_map[tool_name].invoke({
-                                "from_account_id": context.get("from_account_id"),
-                                "to_account_id": context.get("to_account_id"),
-                                "amount": context.get("amount"),
-                                "currency": context.get("currency", "KZT"),
-                                "description": context.get("description")
-                            })
-                        elif tool_name == "deposit_money":
-                            response_text = tool_map[tool_name].invoke({
-                                "account_id": context.get("account_id"),
-                                "amount": context.get("amount"),
-                                "currency": context.get("currency", "KZT"),
-                                "description": context.get("description")
-                            })
-                        elif tool_name == "withdraw_money":
-                            response_text = tool_map[tool_name].invoke({
-                                "account_id": context.get("account_id"),
-                                "amount": context.get("amount"),
-                                "currency": context.get("currency", "KZT"),
-                                "description": context.get("description")
-                            })
-                        elif tool_name == "purchase_product":
-                            response_text = tool_map[tool_name].invoke({
-                                "account_id": context.get("account_id"),
-                                "product_id": context.get("product_id"),
-                                "amount": context.get("amount"),
-                                "currency": context.get("currency", "USD"),
-                                "description": context.get("description")
-                            })
-                        
-                        agents_used.append(tool_name)
-                        sources.append({
-                            "type": "transaction",
-                            "tool": tool_name
-                        })
-                        confidence = 0.95 if "✅" in response_text else 0.1
-                        
-                    else:
-                        response_text = f"❌ Transaction tool '{tool_name}' not found."
-                        confidence = 0.0
-                        
-                except Exception as e:
-                    logger.error(f"[Live Query] Transaction error: {e}")
-                    response_text = f"❌ Error executing transaction: {str(e)}"
-                    confidence = 0.0
-                    
-        # Account information tools
-        elif tool_name in ["get_account_balance", "get_my_accounts", "get_account_details"]:
-            if not user_id:
-                response_text = "❌ Error: User ID is required for account operations."
-                confidence = 0.0
-            else:
-                try:
-                    from rag_agent.tools.account_tools import get_account_balance, get_my_accounts, get_account_details
-                    
-                    context = request.context or {}
-                    
-                    if tool_name == "get_account_balance":
-                        response_text = get_account_balance.invoke({
-                            "account_id": context.get("account_id")
-                        })
-                    elif tool_name == "get_my_accounts":
-                        response_text = get_my_accounts.invoke({
-                            "user_id": user_id
-                        })
-                    elif tool_name == "get_account_details":
-                        response_text = get_account_details.invoke({
-                            "account_id": context.get("account_id")
-                        })
-                    
-                    agents_used.append(tool_name)
-                    sources.append({
-                        "type": "account_info",
-                        "tool": tool_name
-                    })
-                    confidence = 0.90 if "Error" not in response_text else 0.1
-                    
-                except Exception as e:
-                    logger.error(f"[Live Query] Account info error: {e}")
-                    response_text = f"❌ Error getting account information: {str(e)}"
-                    confidence = 0.0
-                    
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unknown tool: {tool_name}. Supported tools: vector_search, web_search, transfer_money, deposit_money, withdraw_money, purchase_product, get_account_balance, get_my_accounts, get_account_details"
-            )
+        # Initialize RAG system if not already done
+        if not rag_system.supervisor_agent:
+            rag_system.initialize(environment="production")
         
-        logger.info(f"[Live Query] Response generated with {len(agents_used)} agent(s)")
+        # Add user information to context
+        if user_id:
+            context["user_id"] = user_id
+        
+        # Process the query through RAG system
+        result = rag_system.query(
+            user_query=query,
+            context=context
+        )
+        
+        logger.info(f"[Live Query] RAG system response: {result}")
         
         return LiveQueryResponse(
-            response=response_text,
-            sources=sources,
-            confidence=confidence,
-            agents_used=agents_used,
+            response=result["response"],
+            sources=result.get("sources", []),
+            confidence=result.get("confidence", 0.0),
+            agents_used=result.get("agents_used", []),
             status="success"
         )
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"[Live Query] Unexpected error: {e}", exc_info=True)
         raise HTTPException(

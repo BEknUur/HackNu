@@ -256,20 +256,46 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
           const { name, args, id } = fc;
           console.log(`[RAG] Executing tool: ${name}`, args);
 
-          // Prepare request body based on tool type
+          // Prepare natural language query for the RAG system
+          let naturalQuery = "";
+          
+          // Convert function calls to natural language
+          if (name === "transfer_money") {
+            naturalQuery = `Transfer ${args.amount} ${args.currency || 'KZT'} from account ${args.from_account_id} to account ${args.to_account_id}`;
+            if (args.description) naturalQuery += ` for ${args.description}`;
+          } else if (name === "deposit_money") {
+            naturalQuery = `Deposit ${args.amount} ${args.currency || 'KZT'} to account ${args.account_id}`;
+            if (args.description) naturalQuery += ` for ${args.description}`;
+          } else if (name === "withdraw_money") {
+            naturalQuery = `Withdraw ${args.amount} ${args.currency || 'KZT'} from account ${args.account_id}`;
+            if (args.description) naturalQuery += ` for ${args.description}`;
+          } else if (name === "get_my_accounts") {
+            naturalQuery = "Show me all my accounts with balances";
+          } else if (name === "get_account_balance") {
+            naturalQuery = `What is the balance of account ${args.account_id}?`;
+          } else if (name === "get_account_details") {
+            naturalQuery = `Show me details of account ${args.account_id}`;
+          } else if (name === "vector_search") {
+            naturalQuery = args.query;
+          } else if (name === "web_search") {
+            naturalQuery = args.query;
+          } else {
+            naturalQuery = args.query || `Execute ${name} with parameters`;
+          }
+
           let requestBody: any = {
-            query: args.query || `Execute ${name} with parameters`,
+            query: naturalQuery,
             context: {
-              tool_name: name,
               session_id: Date.now().toString(),
-              ...args  // Include all function arguments in context
+              original_function: name,
+              ...args  // Include all function arguments in context for reference
             }
           };
 
           // For transaction tools, add user_id (you should get this from your app state)
-          // For now, using a default user_id of 1 - you should replace this with actual user authentication
+          // For now, using a default user_id of 2 - you should replace this with actual user authentication
           if (['transfer_money', 'deposit_money', 'withdraw_money', 'get_my_accounts', 'get_account_balance', 'get_account_details'].includes(name)) {
-            requestBody.user_id = 1; // TODO: Replace with actual authenticated user ID
+            requestBody.user_id = 2; // TODO: Replace with actual authenticated user ID
           }
 
           // Call the backend RAG API

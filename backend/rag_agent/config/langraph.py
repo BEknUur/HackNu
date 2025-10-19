@@ -28,49 +28,58 @@ class SupervisorAgentConfig(AgentConfig):
     """Configuration for supervisor agent."""
     name: str = "supervisor"
     description: str = "Orchestrates and delegates tasks to specialized agents"
-    tools: List[str] = ["vector_search", "web_search"]  # Supervisor has access to all tools
+    tools: List[str] = [
+        "vector_search", "web_search", 
+        "transfer_money", "deposit_money", "withdraw_money", "purchase_product",
+        "get_my_accounts", "get_account_balance", "get_account_details"
+    ]  # Supervisor has access to all tools
     system_prompt: str = """
-You are an intelligent RAG (Retrieval-Augmented Generation) assistant for ZAMAN BANK that helps answer questions using available tools.
+You are an intelligent RAG (Retrieval-Augmented Generation) assistant for ZAMAN BANK that helps answer questions and execute financial transactions using available tools.
 
 === CRITICAL PRIORITY RULES ===
 🎯 ALWAYS TRY vector_search FIRST for ANY query related to Zaman Bank
 🎯 ONLY use web_search if vector_search returns insufficient results
 🎯 NEVER use web_search for internal company information
+🎯 EXECUTE TRANSACTIONS when user requests money operations
 
 === AVAILABLE TOOLS ===
-1. vector_search (PRIORITY #1):
-   - Use for: ALL questions about Zaman Bank, company policies, internal documents, procedures
-   - Searches: Local knowledge base including PDF documents, policies, procedures
-   - Examples: 
-     * "What is our remote work policy?"
-     * "What equipment does Zaman Bank provide?"
-     * "What is our travel policy?"
-     * "Tell me about Zaman Bank's technology"
-     * "What does the Zamanbank document say about..."
-     * ANY question about "our" company or "Zaman Bank"
 
-2. web_search (FALLBACK ONLY):
-   - Use ONLY if vector_search doesn't provide sufficient information
-   - Use for: Current events, online information, recent news, PUBLIC information about OTHER companies
-   - Examples:
-     * "What are the latest AI trends?"
-     * "Find information about OTHER banks"
-     * "Current economic news"
+1. INFORMATION TOOLS:
+   - vector_search (PRIORITY #1): Search Zaman Bank documents, policies, procedures
+   - web_search (FALLBACK): Search web for current events, external information
+
+2. ACCOUNT INFORMATION TOOLS:
+   - get_my_accounts: Show all user accounts with balances
+   - get_account_balance: Check balance of specific account
+   - get_account_details: Get complete account information
+
+3. TRANSACTION TOOLS:
+   - transfer_money: Transfer money between accounts
+   - deposit_money: Add money to an account
+   - withdraw_money: Remove money from an account
+   - purchase_product: Buy products using account funds
+
+=== TRANSACTION EXAMPLES ===
+User: "Send 50000 tenge to account 2" → Use transfer_money
+User: "Transfer money from account 1 to account 2, amount 100000" → Use transfer_money
+User: "Deposit 200000 KZT to my account" → Use deposit_money
+User: "Withdraw 75000 from account 1" → Use withdraw_money
+User: "Show my accounts" → Use get_my_accounts
+User: "What's my balance?" → Use get_my_accounts or get_account_balance
 
 === DECISION WORKFLOW ===
-1. ALWAYS start with vector_search for ANY query
-2. If vector_search provides good results → Use those results
-3. If vector_search results are insufficient → THEN consider web_search
-4. If query is clearly about external topics → Use web_search directly
+1. If user asks about transactions/money operations → Use appropriate transaction tool
+2. If user asks about account info → Use account information tools
+3. If user asks about Zaman Bank → Use vector_search
+4. If user asks about external topics → Use web_search
 
 === RESPONSE FORMAT ===
-- Start with a direct answer to the user's question
-- Include specific details and facts from the tool results
-- Cite sources (document names, URLs, etc.)
-- If information is not found in internal docs, clearly state this
-- DO NOT make up information
+- For transactions: Execute the tool and report success/failure with details
+- For information: Provide direct answers with sources
+- Always be helpful and clear about what actions were taken
+- If transaction fails, explain why and suggest alternatives
 
-Now, analyze the user's query and ALWAYS start with vector_search!
+Execute user requests immediately when they involve financial operations!
 """
 
 
@@ -240,6 +249,17 @@ class LangGraphConfig(BaseModel):
         # Register tool factories that will be implemented in tools module
         self.tool_registry.register_tool_factory("vector_search", self._create_vector_search_tool)
         self.tool_registry.register_tool_factory("web_search", self._create_web_search_tool)
+        
+        # Register transaction tools
+        self.tool_registry.register_tool_factory("transfer_money", self._create_transfer_money_tool)
+        self.tool_registry.register_tool_factory("deposit_money", self._create_deposit_money_tool)
+        self.tool_registry.register_tool_factory("withdraw_money", self._create_withdraw_money_tool)
+        self.tool_registry.register_tool_factory("purchase_product", self._create_purchase_product_tool)
+        
+        # Register account tools
+        self.tool_registry.register_tool_factory("get_my_accounts", self._create_get_my_accounts_tool)
+        self.tool_registry.register_tool_factory("get_account_balance", self._create_get_account_balance_tool)
+        self.tool_registry.register_tool_factory("get_account_details", self._create_get_account_details_tool)
     
     def _create_vector_search_tool(self) -> BaseTool:
         """Create vector search tool."""
@@ -266,6 +286,41 @@ class LangGraphConfig(BaseModel):
         
         from rag_agent.tools.web_search import web_search_tool
         return web_search_tool
+    
+    def _create_transfer_money_tool(self) -> BaseTool:
+        """Create transfer money tool."""
+        from rag_agent.tools.transaction_tools import transfer_money
+        return transfer_money
+    
+    def _create_deposit_money_tool(self) -> BaseTool:
+        """Create deposit money tool."""
+        from rag_agent.tools.transaction_tools import deposit_money
+        return deposit_money
+    
+    def _create_withdraw_money_tool(self) -> BaseTool:
+        """Create withdraw money tool."""
+        from rag_agent.tools.transaction_tools import withdraw_money
+        return withdraw_money
+    
+    def _create_purchase_product_tool(self) -> BaseTool:
+        """Create purchase product tool."""
+        from rag_agent.tools.transaction_tools import purchase_product
+        return purchase_product
+    
+    def _create_get_my_accounts_tool(self) -> BaseTool:
+        """Create get my accounts tool."""
+        from rag_agent.tools.account_tools import get_my_accounts
+        return get_my_accounts
+    
+    def _create_get_account_balance_tool(self) -> BaseTool:
+        """Create get account balance tool."""
+        from rag_agent.tools.account_tools import get_account_balance
+        return get_account_balance
+    
+    def _create_get_account_details_tool(self) -> BaseTool:
+        """Create get account details tool."""
+        from rag_agent.tools.account_tools import get_account_details
+        return get_account_details
     
     
     def create_supervisor_agent(self, llm: Any) -> Any:
