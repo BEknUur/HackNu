@@ -28,81 +28,49 @@ class SupervisorAgentConfig(AgentConfig):
     """Configuration for supervisor agent."""
     name: str = "supervisor"
     description: str = "Orchestrates and delegates tasks to specialized agents"
-    # Supervisor has access to ALL tools
-    tools: List[str] = [
-        # RAG tools
-        "vector_search", 
-        "web_search",
-        # Account tools
-        "get_account_balance",
-        "get_my_accounts",
-        "get_account_details",
-        # Transaction action tools
-        "deposit_money",
-        "withdraw_money",
-        "transfer_money",
-        "purchase_product",
-        # Transaction history tools
-        "get_my_transactions",
-        "get_transaction_stats",
-        "get_account_transactions",
-        "get_transaction_details",
-        # Product tools
-        "search_products",
-        "get_product_details",
-        "get_products_by_category",
-        "get_featured_products",
-        # Cart tools
-        "add_to_cart",
-        "get_my_cart",
-        "remove_from_cart",
-        "checkout_cart",
-        "clear_cart",
-    ]
+    tools: List[str] = ["vector_search", "web_search"]  # Supervisor has access to all tools
     system_prompt: str = """
-You are an intelligent assistant for ZAMAN BANK with access to comprehensive banking tools.
+You are an intelligent RAG (Retrieval-Augmented Generation) assistant for ZAMAN BANK that helps answer questions using available tools.
+
+=== CRITICAL PRIORITY RULES ===
+🎯 ALWAYS TRY vector_search FIRST for ANY query related to Zaman Bank
+🎯 ONLY use web_search if vector_search returns insufficient results
+🎯 NEVER use web_search for internal company information
 
 === AVAILABLE TOOLS ===
+1. vector_search (PRIORITY #1):
+   - Use for: ALL questions about Zaman Bank, company policies, internal documents, procedures
+   - Searches: Local knowledge base including PDF documents, policies, procedures
+   - Examples: 
+     * "What is our remote work policy?"
+     * "What equipment does Zaman Bank provide?"
+     * "What is our travel policy?"
+     * "Tell me about Zaman Bank's technology"
+     * "What does the Zamanbank document say about..."
+     * ANY question about "our" company or "Zaman Bank"
 
-📚 KNOWLEDGE SEARCH:
-- vector_search: Search Zaman Bank's internal knowledge base and documents
-- web_search: Search the web for current information
+2. web_search (FALLBACK ONLY):
+   - Use ONLY if vector_search doesn't provide sufficient information
+   - Use for: Current events, online information, recent news, PUBLIC information about OTHER companies
+   - Examples:
+     * "What are the latest AI trends?"
+     * "Find information about OTHER banks"
+     * "Current economic news"
 
-💰 ACCOUNT MANAGEMENT:
-- get_my_accounts: List all user's accounts with balances
-- get_account_balance: Check balance of a specific account
-- get_account_details: Get complete account information
+=== DECISION WORKFLOW ===
+1. ALWAYS start with vector_search for ANY query
+2. If vector_search provides good results → Use those results
+3. If vector_search results are insufficient → THEN consider web_search
+4. If query is clearly about external topics → Use web_search directly
 
-💳 TRANSACTIONS:
-- deposit_money: Deposit money into an account
-- withdraw_money: Withdraw money from an account
-- transfer_money: Transfer money between accounts
-- get_my_transactions: View user's transaction history
-- get_account_transactions: View transactions for specific account
-- get_transaction_stats: Get transaction statistics
-- get_transaction_details: Get details of a specific transaction
+=== RESPONSE FORMAT ===
+- Start with a direct answer to the user's question
+- Include specific details and facts from the tool results
+- Cite sources (document names, URLs, etc.)
+- If information is not found in internal docs, clearly state this
+- DO NOT make up information
 
-🛍️ SHOPPING:
-- search_products: Search for products
-- get_product_details: Get product information
-- get_products_by_category: Browse products by category
-- get_featured_products: View featured products
-- add_to_cart: Add product to cart
-- get_my_cart: View shopping cart
-- remove_from_cart: Remove item from cart
-- checkout_cart: Purchase items in cart
-- clear_cart: Empty shopping cart
-- purchase_product: Quick purchase without cart
-
-=== INSTRUCTIONS ===
-1. For account/balance questions → Use get_my_accounts or get_account_balance
-2. For transaction history → Use get_my_transactions
-3. For Zaman Bank information → Use vector_search
-4. For current events → Use web_search
-5. For shopping → Use product and cart tools
-6. Always provide clear, helpful responses with specific data
-
-When user asks "how much money do I have", use get_my_accounts to show all accounts!
+Now, analyze the user's query and ALWAYS start with vector_search!
 """
 
 
@@ -269,39 +237,9 @@ class LangGraphConfig(BaseModel):
     
     def _setup_default_tools(self):
         """Setup default tool factories."""
-        # RAG tools
+        # Register tool factories that will be implemented in tools module
         self.tool_registry.register_tool_factory("vector_search", self._create_vector_search_tool)
         self.tool_registry.register_tool_factory("web_search", self._create_web_search_tool)
-        
-        # Account tools
-        self.tool_registry.register_tool_factory("get_account_balance", self._create_account_balance_tool)
-        self.tool_registry.register_tool_factory("get_my_accounts", self._create_my_accounts_tool)
-        self.tool_registry.register_tool_factory("get_account_details", self._create_account_details_tool)
-        
-        # Transaction action tools
-        self.tool_registry.register_tool_factory("deposit_money", self._create_deposit_tool)
-        self.tool_registry.register_tool_factory("withdraw_money", self._create_withdraw_tool)
-        self.tool_registry.register_tool_factory("transfer_money", self._create_transfer_tool)
-        self.tool_registry.register_tool_factory("purchase_product", self._create_purchase_tool)
-        
-        # Transaction history tools
-        self.tool_registry.register_tool_factory("get_my_transactions", self._create_my_transactions_tool)
-        self.tool_registry.register_tool_factory("get_transaction_stats", self._create_transaction_stats_tool)
-        self.tool_registry.register_tool_factory("get_account_transactions", self._create_account_transactions_tool)
-        self.tool_registry.register_tool_factory("get_transaction_details", self._create_transaction_details_tool)
-        
-        # Product tools
-        self.tool_registry.register_tool_factory("search_products", self._create_search_products_tool)
-        self.tool_registry.register_tool_factory("get_product_details", self._create_product_details_tool)
-        self.tool_registry.register_tool_factory("get_products_by_category", self._create_products_by_category_tool)
-        self.tool_registry.register_tool_factory("get_featured_products", self._create_featured_products_tool)
-        
-        # Cart tools
-        self.tool_registry.register_tool_factory("add_to_cart", self._create_add_to_cart_tool)
-        self.tool_registry.register_tool_factory("get_my_cart", self._create_my_cart_tool)
-        self.tool_registry.register_tool_factory("remove_from_cart", self._create_remove_from_cart_tool)
-        self.tool_registry.register_tool_factory("checkout_cart", self._create_checkout_cart_tool)
-        self.tool_registry.register_tool_factory("clear_cart", self._create_clear_cart_tool)
     
     def _create_vector_search_tool(self) -> BaseTool:
         """Create vector search tool."""
@@ -328,211 +266,6 @@ class LangGraphConfig(BaseModel):
         
         from rag_agent.tools.web_search import web_search_tool
         return web_search_tool
-    
-    # Account tools
-    def _create_account_balance_tool(self) -> BaseTool:
-        """Create account balance tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.account_tools import get_account_balance
-        return get_account_balance
-    
-    def _create_my_accounts_tool(self) -> BaseTool:
-        """Create my accounts tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.account_tools import get_my_accounts
-        return get_my_accounts
-    
-    def _create_account_details_tool(self) -> BaseTool:
-        """Create account details tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.account_tools import get_account_details
-        return get_account_details
-    
-    # Transaction action tools
-    def _create_deposit_tool(self) -> BaseTool:
-        """Create deposit tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_tools import deposit_money
-        return deposit_money
-    
-    def _create_withdraw_tool(self) -> BaseTool:
-        """Create withdraw tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_tools import withdraw_money
-        return withdraw_money
-    
-    def _create_transfer_tool(self) -> BaseTool:
-        """Create transfer tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_tools import transfer_money
-        return transfer_money
-    
-    def _create_purchase_tool(self) -> BaseTool:
-        """Create purchase tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_tools import purchase_product
-        return purchase_product
-    
-    # Transaction history tools
-    def _create_my_transactions_tool(self) -> BaseTool:
-        """Create my transactions tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_history_tools import get_my_transactions
-        return get_my_transactions
-    
-    def _create_transaction_stats_tool(self) -> BaseTool:
-        """Create transaction stats tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_history_tools import get_transaction_stats
-        return get_transaction_stats
-    
-    def _create_account_transactions_tool(self) -> BaseTool:
-        """Create account transactions tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_history_tools import get_account_transactions
-        return get_account_transactions
-    
-    def _create_transaction_details_tool(self) -> BaseTool:
-        """Create transaction details tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.transaction_history_tools import get_transaction_details
-        return get_transaction_details
-    
-    # Product tools
-    def _create_search_products_tool(self) -> BaseTool:
-        """Create search products tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.product_tools import search_products
-        return search_products
-    
-    def _create_product_details_tool(self) -> BaseTool:
-        """Create product details tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.product_tools import get_product_details
-        return get_product_details
-    
-    def _create_products_by_category_tool(self) -> BaseTool:
-        """Create products by category tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.product_tools import get_products_by_category
-        return get_products_by_category
-    
-    def _create_featured_products_tool(self) -> BaseTool:
-        """Create featured products tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.product_tools import get_featured_products
-        return get_featured_products
-    
-    # Cart tools
-    def _create_add_to_cart_tool(self) -> BaseTool:
-        """Create add to cart tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.cart_tools import add_to_cart
-        return add_to_cart
-    
-    def _create_my_cart_tool(self) -> BaseTool:
-        """Create my cart tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.cart_tools import get_my_cart
-        return get_my_cart
-    
-    def _create_remove_from_cart_tool(self) -> BaseTool:
-        """Create remove from cart tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.cart_tools import remove_from_cart
-        return remove_from_cart
-    
-    def _create_checkout_cart_tool(self) -> BaseTool:
-        """Create checkout cart tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.cart_tools import checkout_cart
-        return checkout_cart
-    
-    def _create_clear_cart_tool(self) -> BaseTool:
-        """Create clear cart tool."""
-        import sys
-        from pathlib import Path
-        backend_dir = Path(__file__).parent.parent.parent
-        if str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from rag_agent.tools.cart_tools import clear_cart
-        return clear_cart
     
     
     def create_supervisor_agent(self, llm: Any) -> Any:
