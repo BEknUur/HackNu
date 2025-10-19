@@ -28,6 +28,23 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
   const [ragToolsEnabled, setRAGToolsEnabled] = useState(true);
   const [ragToolsHealthy, setRAGToolsHealthy] = useState(false);
   const lastConfigRef = useRef<string | null>(null);
+  
+  // Get user context from localStorage (same as explore.tsx)
+  const getUserContext = useCallback(() => {
+    try {
+      const userJson = typeof localStorage !== 'undefined' ? localStorage.getItem('user') : null;
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        return {
+          userId: user.id || 1,
+          token: typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+        };
+      }
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+    }
+    return { userId: 1, token: null }; // Fallback to user 1 if no auth
+  }, []);
 
   // Check RAG tools health on mount and periodically
   useEffect(() => {
@@ -283,6 +300,9 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
             naturalQuery = args.query || `Execute ${name} with parameters`;
           }
 
+          // Get current user context
+          const userContext = getUserContext();
+          
           let requestBody: any = {
             query: naturalQuery,
             context: {
@@ -292,10 +312,10 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
             }
           };
 
-          // For transaction tools, add user_id (you should get this from your app state)
-          // For now, using a default user_id of 2 - you should replace this with actual user authentication
+          // For transaction tools, add authenticated user_id
           if (['transfer_money', 'deposit_money', 'withdraw_money', 'get_my_accounts', 'get_account_balance', 'get_account_details'].includes(name)) {
-            requestBody.user_id = 2; // TODO: Replace with actual authenticated user ID
+            requestBody.user_id = userContext.userId;
+            console.log(`[RAG] Using authenticated user ID: ${userContext.userId}`);
           }
 
           // Call the backend RAG API
@@ -305,6 +325,7 @@ export function useLiveAPIWithRAG(options: LiveClientOptions): UseLiveAPIWithRAG
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                ...(userContext.token ? { 'Authorization': `Bearer ${userContext.token}` } : {})
               },
               body: JSON.stringify(requestBody),
             }

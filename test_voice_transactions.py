@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+git #!/usr/bin/env python3
 """
 Test Voice-to-Transaction Integration
 
@@ -11,7 +11,7 @@ import json
 
 # Configuration
 BASE_URL = "http://localhost:8000"  # Change this to your server URL
-USER_ID = 2  # Test user ID
+USER_ID = 1  # Test user ID (user 1 has accounts)
 
 def test_live_query(query, user_id=USER_ID):
     """Test a live query request."""
