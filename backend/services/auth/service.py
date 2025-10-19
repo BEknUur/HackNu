@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from database import get_db
 from models.user import User
+from models.account import Account
 from services.auth.schemas import UserRead
 from typing import Optional
+from decimal import Decimal
 import os
 from pathlib import Path
 
@@ -84,6 +86,23 @@ async def create_user(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Create default checking account for new user
+    try:
+        default_account = Account(
+            user_id=new_user.id,
+            account_type="checking",
+            balance=Decimal("0.00"),
+            currency="KZT",
+            status="active"
+        )
+        db.add(default_account)
+        db.commit()
+        print(f"✅ Created default checking account for user {new_user.id}")
+    except Exception as e:
+        print(f"⚠️ Error creating default account for user {new_user.id}: {str(e)}")
+        # Don't fail registration if account creation fails
+        db.rollback()
 
     # Save avatar if provided
     if avatar_file:

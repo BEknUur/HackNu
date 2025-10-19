@@ -120,7 +120,7 @@ def get_my_accounts(user_id: int = None) -> str:
         accounts = account_service.get_user_accounts(effective_user_id, db, include_deleted=False)
         
         if not accounts:
-            return "You don't have any accounts yet. Would you like to create one?"
+            return "❌ Error: No active accounts found for this user. Please contact support to activate your account."
         
         # Format account list
         account_lines = []
